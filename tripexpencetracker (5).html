@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <link rel="icon" type="image/png" href="logo.png">
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6366F1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TripExpense">
+  <link class="apple-touch-icon" href="logo.png">
+    
+  <title>TripExpenceTracker — Premium</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', '-apple-system', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: { 50: '#eef2ff', 100: '#e0e7ff', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 900: '#312e81' },
+            accent: '#06b6d4', success: '#10b981', warning: '#f59e0b', danger: '#ef4444',
+            neutralSlate: {
+              50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b',
+              600: '#475569', 700: '#334155', 800: '#1e293b', 850: '#171e2e', 900: '#0f172a', 950: '#020617', 955: '#0b1120'
+            }
+          },
+          boxShadow: {
+            'soft': '0 8px 30px rgba(0, 0, 0, 0.04)',
+            'glow': '0 0 20px rgba(99, 102, 241, 0.4)',
+            'floating': '0 20px 40px -10px rgba(99, 102, 241, 0.3)',
+          }
+        }
+      }
+    }
+  </script>
+  
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+    ::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* Native Animations */
+    @keyframes slideUp { 0% { transform: translateY(100%); } 100% { transform: translateY(0); } }
+    .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    @keyframes scaleIn { 0% { transform: scale(0.95); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    .scale-in-anim { animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    
+    .tab-content { transition: opacity 0.3s ease; }
+    
+    /* Input Floating Labels */
+    .float-input:focus ~ .float-label, .float-input:not(:placeholder-shown) ~ .float-label {
+      transform: translateY(-130%) scale(0.85); color: #6366f1; font-weight: 700;
+    }
+
+    /* Modals are bound absolute to the container to prevent PC stretching */
+    .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 60; }
+    .modal-content { position: absolute; bottom: 0; left: 0; right: 0; max-height: 90%; z-index: 61; border-top-left-radius: 32px; border-top-right-radius: 32px; box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
+  </style>
+</head>
+
+<!-- PC Emulation Background -->
+<body class="bg-neutralSlate-200 dark:bg-neutralSlate-950 text-neutralSlate-900 dark:text-white min-h-screen flex items-center justify-center antialiased">
+
+  <!-- ========================================== -->
+  <!-- MOBILE EMULATOR WRAPPER (THE ULTIMATE FIX) -->
+  <!-- ========================================== -->
+  <div class="relative w-full h-[100dvh] sm:h-[90vh] sm:max-w-[400px] sm:rounded-[40px] sm:shadow-2xl sm:border-[8px] sm:border-neutralSlate-900 bg-neutralSlate-50 dark:bg-neutralSlate-955 flex flex-col overflow-hidden transition-colors duration-300">
+
+    <!-- OVERLAY 1: Sync Screen -->
+    <div id="cloudHandshakeScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-neutralSlate-955 text-white transition-opacity duration-500 z-[100]">
+      <div class="relative flex items-center justify-center w-28 h-28 mb-8">
+        <div class="absolute inset-0 rounded-full border-2 border-neutralSlate-800"></div>
+        <div class="absolute inset-0 rounded-full border-2 border-t-brand-500 border-r-accent animate-spin shadow-glow"></div>
+        <div class="absolute w-16 h-16 rounded-full bg-neutralSlate-900 flex items-center justify-center shadow-lg"><i data-lucide="cloud-lightning" class="w-8 h-8 text-brand-500 animate-pulse"></i></div>
+      </div>
+      <h2 class="text-2xl font-black mb-2">Syncing Data...</h2>
+      <p class="text-xs text-neutralSlate-400 text-center px-4 mb-8">Establishing connection to cloud.</p>
+      <div class="flex items-center gap-2 text-[10px] tracking-widest font-black uppercase text-brand-500">
+        <span class="w-2 h-2 rounded-full bg-brand-500 animate-ping"></span><span id="handshakeStatusText">ESTABLISHING CONNECTION</span>
+      </div>
+      <button id="handshakeSkipBtn" onclick="bypassSyncFlow()" class="hidden mt-8 px-6 py-3 bg-neutralSlate-800 text-white text-xs font-bold rounded-2xl">Continue Offline</button>
+    </div>
+
+    <!-- OVERLAY 2: Admin Lock Screen -->
+    <div id="adminPinScreen" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-neutralSlate-955 text-white transition-opacity duration-300 z-[99]">
+      <div class="w-full px-6 scale-in-anim">
+        <div class="bg-neutralSlate-900 border border-neutralSlate-800 rounded-[32px] p-8 shadow-2xl flex flex-col items-center text-center">
+          <div class="w-16 h-16 mb-6 bg-brand-500 rounded-2xl flex items-center justify-center shadow-glow"><i data-lucide="lock" class="w-8 h-8 text-white"></i></div>
+          <h3 class="text-2xl font-black text-white">App Locked</h3>
+          <p class="text-xs text-neutralSlate-400 mt-2 mb-6">Enter PIN to access trips</p>
+          <div class="w-full space-y-4">
+            <input type="password" id="loginPinInput" maxlength="4" placeholder="••••" class="w-full bg-neutralSlate-950 text-white px-6 h-14 rounded-2xl border border-neutralSlate-800 focus:outline-none focus:border-brand-500 text-center font-black tracking-[1em] text-xl">
+            <div id="pinErrorMessage" class="hidden text-danger font-bold text-xs">Incorrect PIN.</div>
+            <button onclick="verifySecurityPin()" class="w-full h-14 bg-brand-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-floating active:scale-95 transition-all"><span>Unlock</span><i data-lucide="arrow-right" class="w-5 h-5"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="flex-shrink-0 z-40 px-5 pt-8 pb-3 bg-white/80 dark:bg-neutralSlate-955/80 backdrop-blur-xl border-b border-neutralSlate-200 dark:border-neutralSlate-800 flex flex-col gap-3 transition-colors">
+      <div class="flex items-center justify-between w-full">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-brand-500/10 flex items-center justify-center shadow-sm">
+            <span id="headerLogoContainer" class="text-lg">✈️</span>
+          </div>
+          <h1 id="headerBrandName" class="font-black text-lg tracking-tight">TripExpense</h1>
+        </div>
+        <div class="flex items-center gap-2">
+           <div id="syncStatusIndicator" class="flex items-center gap-1.5 bg-neutralSlate-100 dark:bg-neutralSlate-900 px-2 py-1 rounded-lg border border-neutralSlate-200 dark:border-neutralSlate-800"></div>
+           <button onclick="openSettingsModal()" class="w-8 h-8 flex items-center justify-center bg-neutralSlate-100 dark:bg-neutralSlate-900 rounded-lg text-neutralSlate-600 dark:text-neutralSlate-300 transition-colors"><i data-lucide="settings" class="w-4 h-4"></i></button>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 w-full">
+        <div class="relative group flex-1">
+          <select id="headerTripSelector" onchange="switchTrip(this.value)" class="appearance-none bg-neutralSlate-100 dark:bg-neutralSlate-900 text-neutralSlate-900 dark:text-white pl-4 pr-10 h-10 rounded-xl font-bold text-xs border border-transparent focus:ring-2 focus:ring-brand-500 w-full truncate cursor-pointer transition-all"></select>
+          <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-neutralSlate-400"><i data-lucide="chevron-down" class="w-4 h-4"></i></div>
+        </div>
+        <button onclick="openTripModal()" class="h-10 px-3 flex items-center justify-center bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-xl font-bold text-xs gap-1 transition-colors"><i data-lucide="plus" class="w-4 h-4"></i> New</button>
+        <button onclick="toggleDarkMode()" class="w-10 h-10 shrink-0 flex items-center justify-center bg-neutralSlate-100 dark:bg-neutralSlate-900 rounded-xl text-neutralSlate-600 dark:text-neutralSlate-300 transition-colors"><i id="themeIcon" data-lucide="sun" class="w-4 h-4"></i></button>
+      </div>
+    </header>
+
+    <!-- MAIN SCROLLABLE AREA (Padding bottom prevents overlap with nav) -->
+    <main class="flex-1 overflow-y-auto no-scrollbar pb-28 pt-4 px-4 relative z-0 scroll-smooth">
+      
+      <!-- Onboarding -->
+      <div id="emptyStateOnboarding" class="hidden flex-col items-center justify-center h-[60vh] text-center scale-in-anim">
+        <div class="w-20 h-20 bg-brand-500/10 text-brand-500 rounded-[24px] flex items-center justify-center mb-4"><i data-lucide="map" class="w-10 h-10"></i></div>
+        <h2 class="text-2xl font-black mb-2">Let's Explore</h2>
+        <p class="text-xs text-neutralSlate-500 mb-8 max-w-[250px]">Create your first trip to track expenses, split bills, and manage budgets.</p>
+        <div class="w-full space-y-3">
+          <button onclick="openTripModal()" class="w-full h-12 bg-brand-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-floating active:scale-95"><i data-lucide="plus" class="w-4 h-4"></i> Create New Trip</button>
+          <button onclick="openSettingsModal(); toggleSettingsSection('sectionCloudSync')" class="w-full h-12 bg-neutralSlate-100 dark:bg-neutralSlate-900 text-neutralSlate-800 dark:text-white font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95"><i data-lucide="cloud-download" class="w-4 h-4 text-brand-500"></i> Restore Backup</button>
+        </div>
+      </div>
+
+      <div id="dashboardMainContent" class="block">
+        
+        <!-- HIDDEN DUMMY TABS FOR JS MAPPING -->
+        <div class="hidden">
+          <button id="btnTabHome" class="tab-button"></button><button id="btnTabSpends" class="tab-button"></button>
+          <button id="btnTabSplits" class="tab-button"></button><button id="btnTabAnalytics" class="tab-button"></button>
+          <button id="btnTabNotes" class="tab-button"></button>
+        </div>
+
+        <!-- ================= TAB: HOME ================= -->
+        <div id="tabHome" class="tab-content block space-y-4 scale-in-anim">
+          
+          <!-- Hero Trip Card -->
+          <div class="relative w-full rounded-[24px] overflow-visible p-5 shadow-soft bg-neutralSlate-900 text-white flex flex-col justify-between">
+            <div id="tripCoverBg" class="absolute inset-0 bg-gradient-to-br from-brand-500 to-indigo-700 opacity-95 z-0 transition-colors duration-500 rounded-[24px]"></div>
+            <div class="absolute -top-10 -right-10 opacity-20 pointer-events-none z-0 rotate-12"><i data-lucide="compass" class="w-40 h-40"></i></div>
+            
+            <div class="relative z-10 flex justify-between items-start mb-6">
+              <div class="bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5 text-[10px] font-bold border border-white/20 shadow-sm">
+                <i data-lucide="map-pin" class="w-3 h-3"></i><span id="tripDestination">Loading...</span>
+              </div>
+              <div class="flex gap-1.5 relative">
+                <button onclick="openTripEditModal()" class="w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition border border-white/10 shadow-sm"><i data-lucide="edit-2" class="w-3 h-3"></i></button>
+                <button onclick="toggleDropdown('coverDropdown')" class="w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition border border-white/10 shadow-sm"><i data-lucide="palette" class="w-3 h-3"></i></button>
+
+                <!-- Theme palette popup -->
+                <div id="coverDropdown" class="hidden absolute top-10 right-0 bg-white dark:bg-neutralSlate-850 p-3 rounded-2xl shadow-2xl z-50 grid grid-cols-3 gap-2 border border-neutralSlate-100 dark:border-neutralSlate-800">
+                  <button onclick="updateCover('sunset')" class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-rose-500"></button>
+                  <button onclick="updateCover('indigo')" class="w-8 h-8 rounded-full bg-gradient-to-br from-brand-500 to-indigo-700"></button>
+                  <button onclick="updateCover('forest')" class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600"></button>
+                  <button onclick="updateCover('neon')" class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500"></button>
+                  <button onclick="updateCover('ocean')" class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500"></button>
+                  <button onclick="updateCover('classic')" class="w-8 h-8 rounded-full bg-gradient-to-br from-neutralSlate-400 to-neutralSlate-600"></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="relative z-10">
+              <p class="text-[10px] font-medium opacity-90 flex items-center gap-1 mb-0.5"><i data-lucide="calendar" class="w-3 h-3"></i> <span id="tripDates">Loading...</span></p>
+              <h2 id="tripName" class="text-2xl font-black tracking-tight leading-tight mb-3 drop-shadow-sm">Loading Trip...</h2>
+              <div class="bg-black/20 backdrop-blur-xl rounded-xl p-3 border border-white/10">
+                 <div id="tripHeaderBudgetContainer" class="text-xs font-medium leading-relaxed"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions & Stats -->
+          <div class="grid grid-cols-2 gap-3">
+            <div id="kpiTotalExpenseCard" class="col-span-2 bg-white dark:bg-neutralSlate-900 p-5 rounded-[20px] flex flex-col justify-between relative overflow-hidden group shadow-soft border border-neutralSlate-100 dark:border-neutralSlate-800">
+              <div class="flex items-center justify-between mb-2 relative z-10">
+                <span class="text-[10px] font-black uppercase tracking-wider text-neutralSlate-400">Total Spent</span>
+                <div class="w-8 h-8 rounded-full bg-brand-500/10 text-brand-500 flex items-center justify-center"><i data-lucide="wallet" class="w-4 h-4"></i></div>
+              </div>
+              <p id="statTotalTripExpense" class="text-3xl font-black text-neutralSlate-900 dark:text-white tracking-tight relative z-10">0.00</p>
+            </div>
+
+            <div class="bg-white dark:bg-neutralSlate-900 p-4 rounded-[20px] shadow-soft border border-neutralSlate-100 dark:border-neutralSlate-800">
+              <div class="flex items-center gap-1.5 mb-1">
+                <div class="w-6 h-6 rounded-full bg-success/10 text-success flex items-center justify-center"><i data-lucide="arrow-down-left" class="w-3 h-3"></i></div>
+                <span class="text-[9px] font-bold uppercase tracking-wider text-neutralSlate-400">Owe You</span>
+              </div>
+              <p id="statFriendsOweYou" class="text-lg font-black text-success">0.00</p>
+            </div>
+
+            <div class="bg-white dark:bg-neutralSlate-900 p-4 rounded-[20px] shadow-soft border border-neutralSlate-100 dark:border-neutralSlate-800">
+              <div class="flex items-center gap-1.5 mb-1">
+                <div class="w-6 h-6 rounded-full bg-danger/10 text-danger flex items-center justify-center"><i data-lucide="arrow-up-right" class="w-3 h-3"></i></div>
+                <span class="text-[9px] font-bold uppercase tracking-wider text-neutralSlate-400">You Owe</span>
+              </div>
+              <p id="statYouOweFriends" class="text-lg font-black text-danger">0.00</p>
+            </div>
+            
+            <div class="bg-white dark:bg-neutralSlate-900 p-4 rounded-[20px] shadow-soft border border-neutralSlate-100 dark:border-neutralSlate-800">
+              <div class="text-[9px] font-bold uppercase tracking-wider text-neutralSlate-400 mb-0.5">Personal</div>
+              <p id="statPersonalExpense" class="text-base font-black text-neutralSlate-900 dark:text-white">0.00</p>
+            </div>
+
+            <div class="bg-white dark:bg-neutralSlate-900 p-4 rounded-[20px] shadow-soft border border-neutralSlate-100 dark:border-neutralSlate-800">
+              <div class="text-[9px] font-bold uppercase tracking-wider text-neutralSlate-400 mb-0.5">Settled</div>
+              <p id="statSettledAmount" class="text-base font-black text-neutralSlate-900 dark:text-white">0.00</p>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3 pb-2">
+            <button onclick="document.getElementById('navAnalytics').click()" class="bg-neutralSlate-100 dark:bg-neutralSlate-900 text-neutralSlate-700 dark:text-neutralSlate-300 font-bold p-3 rounded-xl flex justify-center items-center gap-2 text-xs transition active:scale-95"><i data-lucide="pie-chart" class="w-4 h-4"></i> Analytics</button>
+            <button onclick="switchTab('tabNotes')" class="bg-neutralSlate-100 dark:bg-neutralSlate-900 text-neutralSlate-700 dark:text-neutralSlate-300 font-bold p-3 rounded-xl flex justify-center items-center gap-2 text-xs transition active:scale-95"><i data-lucide="book" class="w-4 h-4"></i> Travel Diary</button>
+          </div>
+        </div>
+
+        <!-- ================= TAB: SPENDS ================= -->
+        <div id="tabSpends" class="tab-content hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xl font-black tracking-tight">Expenses</h2>
+            <div class="flex gap-1.5">
+              <button onclick="exportCSV()" class="h-8 px-2.5 bg-white dark:bg-neutralSlate-900 border border-neutralSlate-200 dark:border-neutralSlate-800 rounded-lg font-bold text-[10px] flex items-center gap-1 shadow-sm"><i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-success"></i> CSV</button>
+              <button onclick="exportPDF()" class="h-8 px-2.5 bg-white dark:bg-neutralSlate-900 border border-neutralSlate-200 dark:border-neutralSlate-800 rounded-lg font-bold text-[10px] flex items-center gap-1 shadow-sm"><i data-lucide="file-text" class="w-3.5 h-3.5 text-danger"></i> PDF</button>
+            </div>
+          </div>
+
+          <!-- Filters -->
+          <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            <div class="relative min-w-[140px] flex-1">
+              <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-3 text-neutralSlate-400"></i>
+              <input id="searchQuery" oninput="handleSearchInput()" type="text" placeholder="Search..." class="w-full h-10 bg-white dark:bg-neutralSlate-900 rounded-xl pl-8 pr-3 text-xs focus:ring-2 focus:ring-brand-500 font-bold border border-neutralSlate-100 dark:border-neutralSlate-800 outline-none">
+            </div>
+            <div class="relative min-w-[110px] shrink-0">
+              <select id="filterCategory" onchange="debouncedRenderApp()" class="w-full h-10 bg-white dark:bg-neutralSlate-900 rounded-xl pl-3 pr-8 text-xs focus:ring-2 focus:ring-brand-500 appearance-none font-bold border border-neutralSlate-100 dark:border-neutralSlate-800 outline-none">
+                <option value="ALL">All Cats</option>
+              </select>
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5 absolute right-3 top-3 text-neutralSlate-400 pointer-events-none"></i>
+            </div>
+            <div class="relative min-w-[110px] shrink-0">
+              <select id="sortBy" onchange="debouncedRenderApp()" class="w-full h-10 bg-white dark:bg-neutralSlate-900 rounded-xl pl-3 pr-8 text-xs focus:ring-2 focus:ring-brand-500 appearance-none font-bold border border-neutralSlate-100 dark:border-neutralSlate-800 outline-none">
+                <option value="date-desc">Newest</option><option value="date-asc">Oldest</option>
+                <option value="amount-desc">Highest</option><option value="amount-asc">Lowest</option>
+              </select>
+              <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 absolute right-3 top-3 text-neutralSlate-400 pointer-events-none"></i>
+            </div>
+          </div>
+
+          <div id="expensesContainer" class="space-y-2.5"></div>
+        </div>
+
+        <!-- ================= TAB: SPLITS (FRIENDS) ================= -->
+        <div id="tabSplits" class="tab-content hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <h2 class="text-xl font-black tracking-tight">Companions</h2>
+              <span id="splitBadgeCount" class="bg-brand-500/10 text-brand-500 font-black text-[10px] px-2 py-0.5 rounded-full">0</span>
+            </div>
+            <button onclick="openFriendModal()" class="h-8 px-3 bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Add</button>
+          </div>
+
+          <div id="friendsListContainer" class="grid grid-cols-2 gap-3"></div>
+
+          <div class="bg-white dark:bg-neutralSlate-900 p-4 rounded-[20px] shadow-soft border border-neutralSlate-100 dark:border-neutralSlate-800">
+            <h3 class="font-bold text-[10px] mb-3 text-neutralSlate-400 uppercase tracking-wider flex items-center gap-1.5"><i data-lucide="zap" class="w-3.5 h-3.5 text-warning"></i> Quick Settle</h3>
+            <div id="settleSuggestionsContainer" class="space-y-2"></div>
+          </div>
+
+          <div class="bg-white dark:bg-neutralSlate-900 rounded-[20px] overflow-hidden shadow-soft border border-neutralSlate-100 dark:border-neutralSlate-800">
+            <div class="p-4 border-b border-neutralSlate-100 dark:border-neutralSlate-800 flex justify-between items-center">
+              <h3 class="font-bold text-xs">Ledger Table</h3>
+              <button onclick="shareSplitSummaryWhatsApp()" class="text-success flex items-center gap-1 font-bold text-[10px] bg-success/10 px-2.5 py-1.5 rounded-md"><i data-lucide="send" class="w-3 h-3"></i> WhatsApp</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse min-w-[400px]">
+                <thead><tr class="text-[9px] text-neutralSlate-400 uppercase font-bold bg-neutralSlate-50 dark:bg-neutralSlate-955"><th class="py-2.5 px-4">Friend</th><th class="py-2.5 px-4 text-right">You Paid</th><th class="py-2.5 px-4 text-right">They Paid</th><th class="py-2.5 px-4 text-right">Status</th></tr></thead>
+                <tbody id="splitBalanceTableBody" class="text-[11px] font-medium divide-y divide-neutralSlate-100 dark:divide-neutralSlate-800"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= TAB: ANALYTICS ================= -->
+        <div id="tabAnalytics" class="tab-content hidden space-y-4">
+          <h2 class="text-xl font-black tracking-tight">Analytics</h2>
+          
+          <div class="bg-white dark:bg-neutralSlate-900 p-5 rounded-[24px] shadow-soft border border-neutralSlate-100 dark:border-neutralSlate-800">
+            <h3 class="font-bold text-[10px] mb-4 text-neutralSlate-400 uppercase tracking-wider flex items-center gap-1.5"><i data-lucide="pie-chart" class="w-3.5 h-3.5 text-brand-500"></i> Categories</h3>
+            <div class="flex justify-center h-48 relative w-full"><canvas id="categoryPieChart"></canvas></div>
+          </div>
+
+          <div class="bg-white dark:bg-neutralSlate-900 p-5 rounded-[24px] shadow-soft border border-neutralSlate-100 dark:border-neutralSlate-800">
+            <h3 class="font-bold text-[10px] mb-4 text-neutralSlate-400 uppercase tracking-wider flex items-center gap-1.5"><i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-accent"></i> Daily Flow</h3>
+            <div class="h-40 w-full relative"><canvas id="dailySpendsChart"></canvas></div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+             <div class="bg-white dark:bg-neutralSlate-900 p-4 rounded-[20px] shadow-soft border border-neutralSlate-100 dark:border-neutralSlate-800">
+                <p class="text-[9px] text-neutralSlate-400 font-bold uppercase tracking-wider mb-1">Highest Spend</p>
+                <p id="extremeBiggestVal" class="text-base font-black text-danger mb-0.5">0.00</p>
+                <p id="extremeBiggestDesc" class="text-[10px] text-neutralSlate-500 truncate">---</p>
+             </div>
+             <div class="bg-white dark:bg-neutralSlate-900 p-4 rounded-[20px] shadow-soft border border-neutralSlate-100 dark:border-neutralSlate-800">
+                <p class="text-[9px] text-neutralSlate-400 font-bold uppercase tracking-wider mb-1">Lowest Spend</p>
+                <p id="extremeCheapestVal" class="text-base font-black text-success mb-0.5">0.00</p>
+                <p id="extremeCheapestDesc" class="text-[10px] text-neutralSlate-500 truncate">---</p>
+             </div>
+             <div class="col-span-2 bg-white dark:bg-neutralSlate-900 p-4 rounded-[20px] shadow-soft border border-neutralSlate-100 dark:border-neutralSlate-800">
+                <p class="text-[9px] text-neutralSlate-400 font-bold uppercase tracking-wider mb-3">Methods</p>
+                <div class="space-y-2 text-xs font-bold">
+                  <div class="flex justify-between"><span class="flex items-center gap-1.5 text-neutralSlate-500"><i data-lucide="smartphone" class="w-3.5 h-3.5 text-brand-500"></i> UPI</span><span id="paymentUPIVal" class="text-neutralSlate-900 dark:text-white">0.00</span></div>
+                  <div class="flex justify-between"><span class="flex items-center gap-1.5 text-neutralSlate-500"><i data-lucide="credit-card" class="w-3.5 h-3.5 text-accent"></i> Card</span><span id="paymentCardVal" class="text-neutralSlate-900 dark:text-white">0.00</span></div>
+                  <div class="flex justify-between"><span class="flex items-center gap-1.5 text-neutralSlate-500"><i data-lucide="coins" class="w-3.5 h-3.5 text-warning"></i> Cash</span><span id="paymentCashVal" class="text-neutralSlate-900 dark:text-white">0.00</span></div>
+                </div>
+             </div>
+          </div>
+        </div>
+
+        <!-- ================= TAB: NOTES ================= -->
+        <div id="tabNotes" class="tab-content hidden space-y-4">
+          <h2 class="text-xl font-black tracking-tight">Travel Diary</h2>
+          <div class="bg-white dark:bg-neutralSlate-900 p-5 rounded-[24px] shadow-soft flex flex-col min-h-[300px] border border-neutralSlate-100 dark:border-neutralSlate-800">
+            <h3 class="font-bold text-[10px] text-neutralSlate-400 uppercase tracking-wider flex items-center gap-1.5 mb-3"><i data-lucide="book" class="w-3.5 h-3.5 text-brand-500"></i> Journal</h3>
+            <textarea id="tripJournal" oninput="saveTripJournal()" placeholder="Itineraries, PNRs, memories..." class="flex-1 w-full bg-transparent border-none focus:ring-0 resize-none text-xs font-medium leading-relaxed outline-none placeholder-neutralSlate-400"></textarea>
+          </div>
+          <div id="timelineContainer" class="hidden"></div>
+          <div class="bg-white dark:bg-neutralSlate-900 p-5 rounded-[24px] shadow-soft border border-neutralSlate-100 dark:border-neutralSlate-800">
+            <h3 class="font-bold text-[10px] mb-3 text-neutralSlate-400 uppercase tracking-wider">Trip Details</h3>
+            <div class="space-y-3 text-xs">
+              <div class="flex justify-between pb-2 border-b border-neutralSlate-100 dark:border-neutralSlate-800"><span class="font-medium text-neutralSlate-500">Budget</span><span id="notesPlannedBudget" class="font-black">0.00</span></div>
+              <div class="flex justify-between pb-2 border-b border-neutralSlate-100 dark:border-neutralSlate-800"><span class="font-medium text-neutralSlate-500">Departure</span><span id="notesStartDate" class="font-black">---</span></div>
+              <div class="flex justify-between"><span class="font-medium text-neutralSlate-500">Return</span><span id="notesEndDate" class="font-black">---</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- ========================================== -->
+    <!-- NATIVE BOTTOM NAVIGATION (Absolute to Div) -->
+    <!-- ========================================== -->
+    <nav class="absolute bottom-0 w-full z-40 bg-white/90 dark:bg-neutralSlate-955/90 backdrop-blur-xl border-t border-neutralSlate-200 dark:border-neutralSlate-800 pb-[env(safe-area-inset-bottom)]">
+      <div class="flex justify-between items-center h-[72px] px-4 relative">
+        <button onclick="switchTab('tabHome'); updateBottomNavUI('navHome')" id="navHome" class="bottom-nav-item flex flex-col items-center justify-center w-12 text-brand-500 transition-colors">
+          <i data-lucide="home" class="w-[22px] h-[22px] mb-1"></i><span class="text-[9px] font-bold">Home</span>
+        </button>
+        <button onclick="switchTab('tabSpends'); updateBottomNavUI('navSpends')" id="navSpends" class="bottom-nav-item flex flex-col items-center justify-center w-12 text-neutralSlate-400 transition-colors">
+          <i data-lucide="receipt" class="w-[22px] h-[22px] mb-1"></i><span class="text-[9px] font-bold">Spends</span>
+        </button>
+        
+        <!-- FAB Center -->
+        <div class="w-16 flex justify-center relative">
+          <div class="absolute -top-7">
+            <button onclick="openExpenseModal()" class="w-14 h-14 rounded-full bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-floating flex items-center justify-center active:scale-95 transition-transform"><i data-lucide="plus" class="w-6 h-6"></i></button>
+          </div>
+        </div>
+        
+        <button onclick="switchTab('tabSplits'); updateBottomNavUI('navSplits')" id="navSplits" class="bottom-nav-item flex flex-col items-center justify-center w-12 text-neutralSlate-400 transition-colors">
+          <i data-lucide="users" class="w-[22px] h-[22px] mb-1"></i><span class="text-[9px] font-bold">Friends</span>
+        </button>
+        <button onclick="switchTab('tabAnalytics'); updateBottomNavUI('navAnalytics')" id="navAnalytics" class="bottom-nav-item flex flex-col items-center justify-center w-12 text-neutralSlate-400 transition-colors">
+          <i data-lucide="pie-chart" class="w-[22px] h-[22px] mb-1"></i><span class="text-[9px] font-bold">Stats</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- ========================================== -->
+    <!-- MODALS (Absolute to Emulator Wrapper)      -->
+    <!-- ========================================== -->
+    
+    <!-- Expense Modal -->
+    <div id="expenseModal" class="hidden absolute inset-0 z-[60] flex flex-col justify-end no-print">
+      <div class="modal-overlay" onclick="closeExpenseModal()"></div>
+      <div class="modal-content bg-white dark:bg-neutralSlate-900 p-5 pb-[env(safe-area-inset-bottom)] overflow-y-auto no-scrollbar animate-slide-up">
+        <div class="w-10 h-1 bg-neutralSlate-200 dark:bg-neutralSlate-800 rounded-full mx-auto mb-5"></div>
+        <div class="flex justify-between items-center mb-5"><h3 id="expenseModalTitle" class="text-lg font-black">Log Spend</h3><button onclick="closeExpenseModal()" class="p-1 text-neutralSlate-400"><i data-lucide="x" class="w-5 h-5"></i></button></div>
+        
+        <form id="expenseForm" onsubmit="saveExpense(event)" class="space-y-4 pb-4">
+          <input type="hidden" id="expenseModalId"><input type="hidden" id="expenseModalSettledId">
+          <select id="expenseModalType" required class="hidden"><option value="personal">Personal</option><option value="i_paid_friend">I Paid</option><option value="friend_paid_me">Friend Paid</option><option value="settlement">Settlement</option></select>
+          
+          <div class="flex flex-col items-center py-3 bg-neutralSlate-50 dark:bg-neutralSlate-955 rounded-2xl border border-neutralSlate-100 dark:border-neutralSlate-800">
+             <span class="text-[9px] font-bold text-neutralSlate-400 uppercase tracking-widest mb-1">Amount</span>
+             <div class="flex items-center justify-center gap-1 text-brand-500"><span class="text-xl font-black active-currency mt-1">₹</span><input type="number" step="any" id="expenseModalAmount" required placeholder="0.00" class="w-full bg-transparent text-4xl font-black text-center text-neutralSlate-900 dark:text-white focus:outline-none placeholder-neutralSlate-300 dark:placeholder-neutralSlate-800"></div>
+          </div>
+          
+          <div class="relative"><input type="text" id="expenseModalDescription" required class="float-input peer w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 border border-neutralSlate-100 dark:border-neutralSlate-800 rounded-xl px-4 pt-3 pb-1 focus:outline-none focus:border-brand-500 font-bold text-xs placeholder-transparent text-neutralSlate-900 dark:text-white" placeholder=" "><label class="absolute left-4 top-2 text-[9px] font-bold text-neutralSlate-400 uppercase peer-placeholder-shown:top-4 peer-placeholder-shown:text-xs peer-focus:top-1.5 peer-focus:text-[9px] peer-focus:text-brand-500 transition-all pointer-events-none">What was this for?</label></div>
+
+          <div>
+            <div class="flex p-1 bg-neutralSlate-100 dark:bg-neutralSlate-955 rounded-xl border border-neutralSlate-200/50 dark:border-neutralSlate-800">
+              <button type="button" id="btnTypePersonal" onclick="handleTypeChange('personal')" class="flex-1 py-2.5 rounded-lg text-xs font-bold text-center transition-all bg-white dark:bg-neutralSlate-800 shadow-sm text-neutralSlate-900 dark:text-white">Personal</button>
+              <button type="button" id="btnTypeSplit" onclick="handleTypeChange('i_paid_friend')" class="flex-1 py-2.5 rounded-lg text-xs font-bold text-center transition-all text-neutralSlate-500">Split</button>
+            </div>
+            <div id="splitOptionsContainer" class="hidden opacity-0 flex-col gap-2 mt-3 transition-all duration-300">
+              <div onclick="handleTypeChange('i_paid_friend')" id="cardTypeIPaid" class="p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 border-brand-500 bg-brand-50 dark:bg-brand-500/10"><div id="iconIPaid" class="w-8 h-8 rounded-full flex items-center justify-center bg-brand-500 text-white"><i data-lucide="arrow-up-right" class="w-4 h-4"></i></div><div><h4 class="font-bold text-xs text-neutralSlate-900 dark:text-white">I Paid for Friend</h4></div></div>
+              <div onclick="handleTypeChange('friend_paid_me')" id="cardTypeFriendPaid" class="p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 border-transparent bg-neutralSlate-50 dark:bg-neutralSlate-955"><div id="iconFriendPaid" class="w-8 h-8 rounded-full flex items-center justify-center bg-neutralSlate-200 dark:bg-neutralSlate-800 text-neutralSlate-500"><i data-lucide="arrow-down-left" class="w-4 h-4"></i></div><div><h4 class="font-bold text-xs text-neutralSlate-900 dark:text-white">Friend Paid for Me</h4></div></div>
+              <div onclick="handleTypeChange('settlement')" id="cardTypeSettlement" class="p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 border-transparent bg-neutralSlate-50 dark:bg-neutralSlate-955"><div id="iconSettlement" class="w-8 h-8 rounded-full flex items-center justify-center bg-neutralSlate-200 dark:bg-neutralSlate-800 text-neutralSlate-500"><i data-lucide="handshake" class="w-4 h-4"></i></div><div><h4 class="font-bold text-xs text-neutralSlate-900 dark:text-white">Settlement</h4></div></div>
+            </div>
+          </div>
+          
+          <div id="friendInvolvedRow" class="hidden relative"><select id="expenseModalFriend" class="w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 border border-neutralSlate-100 dark:border-neutralSlate-800 rounded-xl px-4 appearance-none font-bold text-xs pt-3"></select><i data-lucide="chevron-down" class="w-3.5 h-3.5 absolute right-4 top-4 text-neutralSlate-400"></i><span class="absolute left-4 top-1.5 text-[8px] font-bold text-neutralSlate-400 uppercase pointer-events-none">Select Friend</span></div>
+          <div id="settlementDirectionRow" class="hidden relative"><select id="expenseModalSettleDirection" class="w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 border border-neutralSlate-100 dark:border-neutralSlate-800 rounded-xl px-4 appearance-none font-bold text-xs pt-3"><option value="you_to_friend">You Paid Friend</option><option value="friend_to_you">Friend Paid You</option></select><i data-lucide="chevron-down" class="w-3.5 h-3.5 absolute right-4 top-4 text-neutralSlate-400"></i><span class="absolute left-4 top-1.5 text-[8px] font-bold text-neutralSlate-400 uppercase pointer-events-none">Direction</span></div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="relative"><select id="expenseModalCategory" required class="w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 border border-neutralSlate-100 dark:border-neutralSlate-800 rounded-xl px-4 appearance-none font-bold text-xs pt-3"></select><i data-lucide="chevron-down" class="w-3.5 h-3.5 absolute right-3 top-4 text-neutralSlate-400"></i><span class="absolute left-4 top-1.5 text-[8px] font-bold text-neutralSlate-400 uppercase">Category</span></div>
+            <div class="relative"><input type="date" id="expenseModalDate" required class="w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 border border-neutralSlate-100 dark:border-neutralSlate-800 rounded-xl px-3 appearance-none font-bold text-xs pt-3"><span class="absolute left-3 top-1.5 text-[8px] font-bold text-neutralSlate-400 uppercase">Date</span></div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <div class="relative"><select id="expenseModalPaymentMethod" required class="w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 border border-neutralSlate-100 dark:border-neutralSlate-800 rounded-xl px-4 appearance-none font-bold text-xs pt-3"><option value="UPI">UPI/Digital</option><option value="Card">Card</option><option value="Cash">Cash</option></select><i data-lucide="chevron-down" class="w-3.5 h-3.5 absolute right-3 top-4 text-neutralSlate-400"></i><span class="absolute left-4 top-1.5 text-[8px] font-bold text-neutralSlate-400 uppercase">Method</span></div>
+            <div class="relative"><input type="text" id="expenseModalNotes" class="w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 border border-neutralSlate-100 dark:border-neutralSlate-800 rounded-xl px-3 pt-3 pb-1 font-bold text-xs"><span class="absolute left-3 top-1.5 text-[8px] font-bold text-neutralSlate-400 uppercase pointer-events-none">Notes/Memo</span></div>
+          </div>
+          
+          <div class="flex items-center gap-2 bg-neutralSlate-50 dark:bg-neutralSlate-955 p-2.5 rounded-xl border border-neutralSlate-100 dark:border-neutralSlate-800"><input type="file" id="expenseModalBillInput" onchange="processBillImage(event)" class="hidden" accept="image/*"><button type="button" onclick="document.getElementById('expenseModalBillInput').click()" class="px-3 py-1.5 bg-white dark:bg-neutralSlate-900 rounded-lg font-bold text-[10px] flex gap-1.5 border border-neutralSlate-200 dark:border-neutralSlate-700 shadow-sm"><i data-lucide="camera" class="w-3.5 h-3.5 text-brand-500"></i> Receipt</button><span id="billAttachmentStatus" class="text-[9px] text-neutralSlate-500 truncate">None</span><input type="hidden" id="expenseModalBillBase64"></div>
+          
+          <button id="expenseSubmitBtn" type="submit" class="w-full h-12 bg-brand-500 text-white rounded-xl font-black text-sm shadow-floating active:scale-95 transition-all mt-2">Save Spend</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Friend Modal -->
+    <div id="friendModal" class="hidden absolute inset-0 z-[60] flex flex-col justify-end no-print">
+      <div class="modal-overlay" onclick="closeFriendModal()"></div>
+      <div class="modal-content bg-white dark:bg-neutralSlate-900 p-5 pb-8 animate-slide-up">
+        <div class="w-10 h-1 bg-neutralSlate-200 dark:bg-neutralSlate-800 rounded-full mx-auto mb-5"></div>
+        <h3 class="text-lg font-black mb-4">Add Friend</h3>
+        <form id="friendForm" onsubmit="saveFriend(event)" class="space-y-3">
+          <input type="text" id="friendModalName" required placeholder="Name" class="w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 border border-neutralSlate-100 dark:border-neutralSlate-800 rounded-xl px-4 font-bold text-xs"><input type="tel" id="friendModalPhone" placeholder="Phone (Optional)" class="w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 border border-neutralSlate-100 dark:border-neutralSlate-800 rounded-xl px-4 font-bold text-xs">
+          <div class="grid grid-cols-4 gap-2 pt-2"><button type="button" onclick="selectFriendColor('bg-indigo-500')" class="friend-color-btn h-10 rounded-xl bg-indigo-500 border-2 border-indigo-400"></button><button type="button" onclick="selectFriendColor('bg-orange-500')" class="friend-color-btn h-10 rounded-xl bg-orange-500 border-2 border-transparent"></button><button type="button" onclick="selectFriendColor('bg-emerald-500')" class="friend-color-btn h-10 rounded-xl bg-emerald-500 border-2 border-transparent"></button><button type="button" onclick="selectFriendColor('bg-rose-500')" class="friend-color-btn h-10 rounded-xl bg-rose-500 border-2 border-transparent"></button></div><input type="hidden" id="friendModalColor" value="bg-indigo-500">
+          <button type="submit" class="w-full h-12 bg-brand-500 text-white rounded-xl font-black mt-2">Save</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Trip Modal -->
+    <div id="tripModal" class="hidden absolute inset-0 z-[60] flex flex-col justify-end no-print">
+      <div class="modal-overlay" onclick="closeTripModal()"></div>
+      <div class="modal-content bg-white dark:bg-neutralSlate-900 p-5 pb-8 animate-slide-up overflow-y-auto">
+        <div class="w-10 h-1 bg-neutralSlate-200 dark:bg-neutralSlate-800 rounded-full mx-auto mb-5"></div>
+        <h3 id="tripModalTitle" class="text-lg font-black mb-4">New Trip</h3>
+        <form id="tripForm" onsubmit="saveTrip(event)" class="space-y-3">
+          <input type="hidden" id="tripModalId">
+          <input type="text" id="tripModalName" required placeholder="Trip Name" class="w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 border border-neutralSlate-100 dark:border-neutralSlate-800 rounded-xl px-4 font-bold text-xs">
+          <input type="text" id="tripModalDestination" required placeholder="Destination" class="w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 border border-neutralSlate-100 dark:border-neutralSlate-800 rounded-xl px-4 font-bold text-xs">
+          <div class="grid grid-cols-2 gap-3"><div class="relative"><input type="date" id="tripModalStartDate" required class="w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 px-3 pt-4 text-xs font-bold rounded-xl border border-neutralSlate-100 dark:border-neutralSlate-800"><span class="absolute left-3 top-1 text-[8px] font-bold text-neutralSlate-400">Start</span></div><div class="relative"><input type="date" id="tripModalEndDate" required class="w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 px-3 pt-4 text-xs font-bold rounded-xl border border-neutralSlate-100 dark:border-neutralSlate-800"><span class="absolute left-3 top-1 text-[8px] font-bold text-neutralSlate-400">End</span></div></div>
+          <div class="relative"><span class="absolute left-4 top-3.5 font-bold active-currency">₹</span><input type="number" id="tripModalBudget" required placeholder="Budget" class="w-full h-12 bg-neutralSlate-50 dark:bg-neutralSlate-955 pl-8 pr-4 font-bold text-xs rounded-xl border border-neutralSlate-100 dark:border-neutralSlate-800"></div>
+          <button type="submit" class="w-full h-12 bg-brand-500 text-white rounded-xl font-black mt-2">Save Trip</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Alert Modal -->
+    <div id="alertDialog" class="hidden absolute inset-0 z-[100] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeAlertDialog()"></div>
+      <div class="relative bg-white dark:bg-neutralSlate-900 rounded-2xl w-full p-5 text-center shadow-2xl scale-in-anim">
+        <i data-lucide="alert-triangle" class="w-10 h-10 text-danger mx-auto mb-3"></i>
+        <h3 id="alertTitle" class="text-base font-black mb-1">Are you sure?</h3>
+        <p id="alertMessage" class="text-xs text-neutralSlate-500 mb-5">Cannot be undone.</p>
+        <div class="flex gap-2"><button id="alertCancelBtn" onclick="closeAlertDialog()" class="flex-1 h-10 bg-neutralSlate-100 dark:bg-neutralSlate-800 font-bold rounded-xl text-xs">Cancel</button><button id="alertConfirmBtn" class="flex-1 h-10 bg-danger text-white font-bold rounded-xl text-xs">Confirm</button></div>
+      </div>
+    </div>
+
+    <!-- Settings Modal (Perfectly Matched to UI requirements) -->
+    <div id="settingsModal" class="hidden absolute inset-0 z-[60] flex flex-col justify-end no-print">
+      <div class="modal-overlay" onclick="closeSettingsModal()"></div>
+      <div class="modal-content bg-white dark:bg-[#13111C] flex flex-col h-[90%] animate-slide-up shadow-2xl border-t border-neutralSlate-200 dark:border-white/5 overflow-hidden">
+        <div class="shrink-0 p-5 border-b border-neutralSlate-100 dark:border-white/5 flex justify-between items-center"><h3 class="font-black flex items-center gap-2"><i data-lucide="settings" class="w-5 h-5 text-brand-500"></i> Settings</h3><button onclick="closeSettingsModal()"><i data-lucide="x" class="w-5 h-5 text-neutralSlate-400"></i></button></div>
+        <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 pb-8">
+          
+          <div class="border border-neutralSlate-200 dark:border-white/5 rounded-xl bg-neutralSlate-50 dark:bg-[#1a1825] overflow-hidden">
+            <button onclick="toggleSettingsSection('sectionBrand')" class="w-full p-3.5 flex justify-between items-center font-bold text-xs"><span class="flex items-center gap-2"><i data-lucide="user" class="w-4 h-4 text-brand-500"></i> Profile</span><i data-lucide="chevron-down" id="arrow-sectionBrand" class="w-3.5 h-3.5 transition-transform"></i></button>
+            <div id="sectionBrand" class="hidden p-3 border-t border-neutralSlate-200 dark:border-white/5 space-y-2 dark:bg-[#13111C]">
+              <input type="text" id="customAppNameInput" oninput="updateBrandSettings()" class="w-full h-10 bg-white dark:bg-[#1a1825] rounded-lg px-3 text-xs border border-neutralSlate-200 dark:border-white/5 focus:ring-1 focus:ring-brand-500" placeholder="App Title">
+              <input type="text" id="customAppLogoInput" oninput="updateBrandSettings()" class="w-full h-10 bg-white dark:bg-[#1a1825] rounded-lg px-3 text-xs border border-neutralSlate-200 dark:border-white/5 focus:ring-1 focus:ring-brand-500" placeholder="Logo">
+            </div>
+          </div>
+
+          <div class="border border-neutralSlate-200 dark:border-white/5 rounded-xl bg-neutralSlate-50 dark:bg-[#1a1825] overflow-hidden">
+            <button onclick="toggleSettingsSection('sectionAppearance')" class="w-full p-3.5 flex justify-between items-center font-bold text-xs"><span class="flex items-center gap-2"><i data-lucide="palette" class="w-4 h-4 text-brand-500"></i> Appearance</span><i data-lucide="chevron-down" id="arrow-sectionAppearance" class="w-3.5 h-3.5 transition-transform"></i></button>
+            <div id="sectionAppearance" class="hidden p-3 border-t border-neutralSlate-200 dark:border-white/5 space-y-2 dark:bg-[#13111C]">
+              <div class="flex items-center justify-between bg-white dark:bg-[#1a1825] p-2 rounded-lg border border-neutralSlate-200 dark:border-white/5"><span class="text-xs font-bold">Theme Mode</span><button onclick="toggleDarkMode()" class="h-8 px-3 bg-neutralSlate-100 dark:bg-[#252236] rounded-md text-[10px] font-bold flex items-center gap-1.5"><i id="themeIconModal" data-lucide="sun" class="w-3 h-3"></i><span id="themeTextModal">Toggle</span></button></div>
+              <select id="currencySelector" onchange="changeCurrency(this.value)" class="w-full h-10 bg-white dark:bg-[#1a1825] border border-neutralSlate-200 dark:border-white/5 rounded-lg px-3 text-xs font-bold outline-none"><option value="₹">₹ INR</option><option value="$">$ USD</option><option value="€">€ EUR</option></select>
+            </div>
+          </div>
+
+          <div class="border border-neutralSlate-200 dark:border-white/5 rounded-xl bg-neutralSlate-50 dark:bg-[#1a1825] overflow-hidden">
+            <button onclick="toggleSettingsSection('sectionCloudSync')" class="w-full p-3.5 flex justify-between items-center font-bold text-xs"><span class="flex items-center gap-2"><i data-lucide="cloud" class="w-4 h-4 text-brand-500"></i> Sync</span><div class="flex gap-2"><span id="cloudSyncModalStatus" class="bg-emerald-500/20 text-emerald-500 px-1.5 py-0.5 rounded text-[8px] font-black">LOCAL</span><i data-lucide="chevron-down" id="arrow-sectionCloudSync" class="w-3.5 h-3.5 transition-transform"></i></div></button>
+            <div id="sectionCloudSync" class="hidden p-3 border-t border-neutralSlate-200 dark:border-white/5 space-y-3 dark:bg-[#13111C]">
+              <div class="flex justify-between items-center bg-white dark:bg-[#1a1825] p-2 rounded-lg border border-neutralSlate-200 dark:border-white/5"><span class="text-xs font-bold">Auto-Sync</span><input type="checkbox" id="autoSyncToggle" onchange="toggleAutoSync(this.checked)" class="w-4 h-4 accent-brand-500"></div>
+              <div><div class="flex justify-between text-[9px] font-bold text-brand-500 uppercase mb-1"><span>App Script URL</span><button onclick="clearCloudUrl()" class="text-danger">Clear</button></div><input type="url" id="gasUrlInput" oninput="updateCloudUrl(this.value)" class="w-full h-10 bg-white dark:bg-[#1a1825] rounded-lg px-3 text-xs border border-neutralSlate-200 dark:border-white/5" placeholder="Paste script URL..."></div>
+              <div class="grid grid-cols-2 gap-2"><button onclick="pushStateToCloud()" class="h-10 bg-neutralSlate-100 dark:bg-[#252236] rounded-lg text-[10px] font-bold flex justify-center items-center gap-1.5 border border-neutralSlate-200 dark:border-white/5"><i data-lucide="upload-cloud" class="w-3 h-3 text-brand-500"></i> Push</button><button onclick="pullStateFromCloud()" class="h-10 bg-brand-500 text-white rounded-lg text-[10px] font-bold flex justify-center items-center gap-1.5"><i data-lucide="download-cloud" class="w-3 h-3"></i> Pull</button></div>
+              <button onclick="toggleDropdown('gasCodeCollapsible')" class="text-[9px] font-bold text-neutralSlate-500 mt-2 flex justify-center items-center w-full p-2 bg-neutralSlate-100 dark:bg-[#1a1825] rounded-lg">View Script</button>
+              <div id="gasCodeCollapsible" class="hidden mt-2 bg-neutralSlate-900 p-2 rounded-lg"><pre id="appsScriptCodeText" class="text-[7px] text-neutralSlate-300 overflow-x-auto">function doGet(e){var p=PropertiesService.getScriptProperties();return ContentService.createTextOutput(JSON.stringify({status:"success",data:p.getProperty("wb_db")?JSON.parse(p.getProperty("wb_db")):null})).setMimeType(ContentService.MimeType.JSON)}function doPost(e){var req=JSON.parse(e.postData.contents);if(req.action==="sync"){PropertiesService.getScriptProperties().setProperty("wb_db",JSON.stringify(req.data));return ContentService.createTextOutput(JSON.stringify({status:"success"})).setMimeType(ContentService.MimeType.JSON)}}</pre><button onclick="copyAppsScriptCode()" class="mt-2 w-full h-7 bg-brand-500 text-white rounded-[6px] text-[9px] font-bold">Copy</button></div>
+            </div>
+          </div>
+
+          <div class="border border-neutralSlate-200 dark:border-white/5 rounded-xl bg-neutralSlate-50 dark:bg-[#1a1825] overflow-hidden">
+            <button onclick="toggleSettingsSection('sectionSecurity')" class="w-full p-3.5 flex justify-between items-center font-bold text-xs"><span class="flex items-center gap-2"><i data-lucide="lock" class="w-4 h-4 text-brand-500"></i> Security PIN</span><i data-lucide="chevron-down" id="arrow-sectionSecurity" class="w-3.5 h-3.5 transition-transform"></i></button>
+            <div id="sectionSecurity" class="hidden p-3 border-t border-neutralSlate-200 dark:border-white/5 dark:bg-[#13111C]">
+              <input type="password" id="customAppPinInput" maxlength="4" oninput="updateAppPin(this.value)" class="w-full h-12 bg-white dark:bg-[#1a1825] rounded-lg px-4 text-center tracking-[1em] font-black border border-neutralSlate-200 dark:border-white/5" placeholder="0000">
+            </div>
+          </div>
+
+          <div class="border border-neutralSlate-200 dark:border-white/5 rounded-xl bg-neutralSlate-50 dark:bg-[#1a1825] overflow-hidden">
+            <button onclick="toggleSettingsSection('sectionBackupRestore')" class="w-full p-3.5 flex justify-between items-center font-bold text-xs"><span class="flex items-center gap-2"><i data-lucide="database" class="w-4 h-4 text-brand-500"></i> Backup JSON</span><i data-lucide="chevron-down" id="arrow-sectionBackupRestore" class="w-3.5 h-3.5 transition-transform"></i></button>
+            <div id="sectionBackupRestore" class="hidden p-3 border-t border-neutralSlate-200 dark:border-white/5 space-y-2 dark:bg-[#13111C]">
+              <button onclick="triggerBackup()" class="w-full h-10 bg-neutralSlate-100 dark:bg-[#252236] text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 border border-neutralSlate-200 dark:border-white/5"><i data-lucide="download" class="w-3.5 h-3.5"></i> Export JSON</button>
+              <button onclick="document.getElementById('importFileInput').click()" class="w-full h-10 bg-neutralSlate-100 dark:bg-[#252236] text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 border border-neutralSlate-200 dark:border-white/5"><i data-lucide="upload" class="w-3.5 h-3.5 text-emerald-500"></i> Restore JSON</button><input type="file" id="importFileInput" onchange="triggerRestore(event)" class="hidden" accept=".json">
+              <button onclick="resetAllData()" class="w-full h-10 bg-danger/10 text-danger text-[10px] font-bold rounded-lg flex items-center justify-center gap-1.5 mt-2"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Reset All Data</button>
+            </div>
+          </div>
+
+          <div class="border border-neutralSlate-200 dark:border-white/5 rounded-xl bg-neutralSlate-50 dark:bg-[#1a1825] overflow-hidden">
+            <button onclick="toggleSettingsSection('sectionAbout')" class="w-full p-3.5 flex justify-between items-center font-bold text-xs"><span class="flex items-center gap-2"><i data-lucide="info" class="w-4 h-4 text-brand-500"></i> About</span><i data-lucide="chevron-down" id="arrow-sectionAbout" class="w-3.5 h-3.5 transition-transform"></i></button>
+            <div id="sectionAbout" class="hidden p-4 border-t border-neutralSlate-200 dark:border-white/5 text-center dark:bg-[#13111C]">
+              <h4 class="font-extrabold text-xs">TripExpense Premium</h4><p class="text-[9px] text-neutralSlate-400 mt-1">v1.8 | Crafted by SACHINDHISLE04</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pwaNotificationContainer" class="fixed top-4 left-0 right-0 z-[1000] flex flex-col items-center pointer-events-none"></div>
+
+  <!-- JAVASCRIPT: 100% Preserved Logic -->
+  <script>
+    // Independent UI helper for bottom nav
+    function updateBottomNavUI(activeId) {
+      document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+        btn.classList.remove('text-brand-500');
+        btn.classList.add('text-neutralSlate-400');
+      });
+      const activeBtn = document.getElementById(activeId);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-neutralSlate-400');
+        activeBtn.classList.add('text-brand-500');
+      }
+    }
+
+    const CATEGORIES = [
+      { id: "Food", name: "Food 🍽️", bgClass: "bg-orange-500/10 text-orange-600 dark:text-orange-404" },
+      { id: "Train", name: "Train 🚆", bgClass: "bg-blue-500/10 text-blue-600 dark:text-blue-404" },
+      { id: "Bus", name: "Bus 🚌", bgClass: "bg-amber-500/10 text-amber-600 dark:text-amber-404" },
+      { id: "Auto", name: "Auto 🛺", bgClass: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-404" },
+      { id: "Taxi", name: "Taxi 🚕", bgClass: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-404" },
+      { id: "Petrol", name: "Petrol ⛽", bgClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-404" },
+      { id: "Hotel", name: "Hotel 🏨", bgClass: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-404" },
+      { id: "Shopping", name: "Shopping 🛍️", bgClass: "bg-pink-500/10 text-pink-600 dark:text-pink-404" },
+      { id: "Snacks", name: "Snacks ☕", bgClass: "bg-amber-500/10 text-amber-600 dark:text-amber-404" },
+      { id: "Water", name: "Water 💧", bgClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-404" },
+      { id: "Darshan", name: "Ticket 🙏", bgClass: "bg-rose-500/10 text-rose-600 dark:text-rose-404" },
+      { id: "Medical", name: "Medical 💊", bgClass: "bg-red-500/10 text-red-600 dark:text-red-404" },
+      { id: "Flight", name: "Flight ✈️", bgClass: "bg-sky-500/10 text-sky-600 dark:text-sky-404" },
+      { id: "Misc", name: "Other 📌", bgClass: "bg-neutralSlate-500/10 text-neutralSlate-600 dark:text-neutralSlate-404" }
+    ];
+
+    let appState = { trips: [], activeTripId: "", currency: "₹", theme: "light", appName: "TripExpense", appLogo: "✈️", gasUrl: "", autoSync: false, securityPin: "0000", lastUpdated: 0 };
+    let pieChartInstance = null; let barChartInstance = null; let syncStatusState = "local"; let backgroundPollInterval = null;
+
+    function generateUniqueId(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`; }
+    function safeSetText(elementId, value) { const el = document.getElementById(elementId); if (el) el.textContent = value; }
+    
+    async function fetchWithRetry(url, options = {}, retries = 5, delay = 1000) {
+      try { const response = await fetch(url, options); if (!response.ok) throw new Error('Network err'); return response; } 
+      catch (err) { if (retries > 0) { await new Promise(resolve => setTimeout(resolve, delay)); return fetchWithRetry(url, options, retries - 1, delay * 2); } throw err; }
+    }
+
+    window.onload = async function() {
+      loadDataFromStorage(); populateCategorySelectors(); applyBrandSettings(); applyThemeFromState();
+      await executeStartupHandshake(); registerServiceWorker(); updateBottomNavUI('navHome');
+    }
+
+    function loadDataFromStorage() {
+      const savedData = localStorage.getItem('tripexpencetracker_master_v17_premium');
+      if (savedData) { try { appState = JSON.parse(savedData); } catch (e) { seedInitialSampleData(); } } else { seedInitialSampleData(); }
+      if (!appState || !appState.trips) seedInitialSampleData();
+      if (!appState.appName) appState.appName = "TripExpense"; if (!appState.appLogo) appState.appLogo = "✈️"; if (!appState.securityPin) appState.securityPin = "0000";
+    }
+
+    function seedInitialSampleData() { appState = { trips: [], activeTripId: "", currency: "₹", theme: "light", appName: "TripExpense", appLogo: "✈️", gasUrl: "", autoSync: false, securityPin: "0000", lastUpdated: 0 }; saveStateToLocalStorageDirectly(); }
+    function saveStateToLocalStorageDirectly() { localStorage.setItem('tripexpencetracker_master_v17_premium', JSON.stringify(appState)); }
+    function saveStateToLocalStorage() { appState.lastUpdated = Date.now(); saveStateToLocalStorageDirectly(); if (appState.autoSync && appState.gasUrl) triggerSilentCloudSync(); }
+
+    async function executeStartupHandshake() {
+      if (!navigator.onLine || !appState.gasUrl) { transitionToPinScreen(); return; }
+      const statusText = document.getElementById('handshakeStatusText'); const skipBtn = document.getElementById('handshakeSkipBtn');
+      setTimeout(() => { if (skipBtn) skipBtn.classList.remove('hidden'); }, 3000);
+      try {
+        statusText.textContent = "PULLING..."; const response = await fetch(appState.gasUrl);
+        if (!response.ok) throw new Error('Err'); const result = await response.json();
+        if (result && result.status === "success" && result.data) {
+          statusText.textContent = "SYNCING..."; const cloudState = result.data;
+          if (cloudState.lastUpdated > (appState.lastUpdated || 0) || !appState.trips.length) { const url = appState.gasUrl; appState = cloudState; appState.gasUrl = url; saveStateToLocalStorageDirectly(); }
+          populateCategorySelectors(); applyBrandSettings(); applyThemeFromState();
+        }
+      } catch (err) {}
+      setTimeout(() => { transitionToPinScreen(); }, 800);
+    }
+
+    function transitionToPinScreen() {
+      const splash = document.getElementById('cloudHandshakeScreen'); if (splash) { splash.classList.add('opacity-0'); setTimeout(() => splash.classList.add('hidden'), 500); }
+      const pinScreen = document.getElementById('adminPinScreen'); if (pinScreen) { pinScreen.classList.remove('hidden'); document.getElementById('loginPinInput').focus(); }
+    }
+    function bypassSyncFlow() { transitionToPinScreen(); }
+
+    function verifySecurityPin() {
+      const entered = document.getElementById('loginPinInput').value; const targetPin = appState.securityPin || "0000"; const errorMsg = document.getElementById('pinErrorMessage');
+      if (entered === targetPin) {
+        errorMsg.classList.add('hidden'); const pinScreen = document.getElementById('adminPinScreen');
+        if (pinScreen) { pinScreen.classList.add('opacity-0'); setTimeout(() => pinScreen.classList.add('hidden'), 300); }
+        renderApp(); startBackgroundPolling(); 
+      } else { errorMsg.classList.remove('hidden'); document.getElementById('loginPinInput').value = ''; document.getElementById('loginPinInput').focus(); }
+    }
+    function updateAppPin(newPin) { if (newPin && newPin.length === 4) { appState.securityPin = newPin; saveStateToLocalStorage(); } }
+
+    let silentSyncTimer = null;
+    function triggerSilentCloudSync() {
+      if (!appState.gasUrl) return; updateSyncStatusUI("syncing");
+      if (silentSyncTimer) clearTimeout(silentSyncTimer);
+      silentSyncTimer = setTimeout(() => {
+        fetchWithRetry(appState.gasUrl, { method: 'POST', body: JSON.stringify({ action: 'sync', data: appState }), headers: { 'Content-Type': 'text/plain' } })
+        .then(() => { updateSyncStatusUI("synced"); }).catch(() => { updateSyncStatusUI("error"); });
+      }, 1200);
+    }
+    function startBackgroundPolling() { if (backgroundPollInterval) clearInterval(backgroundPollInterval); if (appState.autoSync && appState.gasUrl) backgroundPollInterval = setInterval(silentBackgroundPull, 12000); }
+    document.addEventListener("visibilitychange", () => { if (document.hidden) { if (backgroundPollInterval) clearInterval(backgroundPollInterval); } else startBackgroundPolling(); });
+    async function silentBackgroundPull() {
+      if (!appState.gasUrl || !appState.autoSync) return;
+      try { const response = await fetch(appState.gasUrl); if (!response.ok) return; const result = await response.json();
+        if (result && result.status === "success" && result.data) { const cloudState = result.data;
+          if (cloudState.lastUpdated > (appState.lastUpdated || 0)) { const url = appState.gasUrl; appState = cloudState; appState.gasUrl = url; saveStateToLocalStorageDirectly(); renderApp(); updateSyncStatusUI("pulled-new"); setTimeout(() => updateSyncStatusUI("synced"), 3500); }
+        }
+      } catch (err) {}
+    }
+
+    function updateSyncStatusUI(status) {
+      syncStatusState = status; const syncHeader = document.getElementById('syncStatusIndicator'); const modalBadge = document.getElementById('cloudSyncModalStatus');
+      const updateBadge = (el) => {
+        if (!el) return;
+        if (!appState.gasUrl) { el.textContent = "LOCAL"; el.className = "bg-neutralSlate-200 dark:bg-neutralSlate-800 text-neutralSlate-600 dark:text-neutralSlate-300 text-[8px] px-1.5 py-0.5 rounded font-black"; } 
+        else {
+          switch (status) {
+            case 'syncing': el.textContent = "SYNCING"; el.className = "bg-brand-500/20 text-brand-500 text-[8px] px-1.5 py-0.5 rounded font-black animate-pulse"; break;
+            case 'synced': el.textContent = "SYNCED"; el.className = "bg-success/20 text-success text-[8px] px-1.5 py-0.5 rounded font-black"; break;
+            case 'error': el.textContent = "ERROR"; el.className = "bg-danger/20 text-danger text-[8px] px-1.5 py-0.5 rounded font-black"; break;
+            default: el.textContent = appState.autoSync ? "AUTO" : "MANUAL"; el.className = "bg-success/20 text-success text-[8px] px-1.5 py-0.5 rounded font-black"; break;
+          }
+        }
+      };
+      updateBadge(modalBadge);
+      if (syncHeader) {
+        if (!appState.gasUrl) syncHeader.innerHTML = `<i data-lucide="cloud" class="w-3 h-3 text-neutralSlate-400"></i><span class="text-[8px] font-bold uppercase tracking-wider text-neutralSlate-500">Local</span>`;
+        else {
+          switch (status) {
+            case 'syncing': syncHeader.innerHTML = `<i data-lucide="refresh-cw" class="w-3 h-3 text-brand-500 animate-spin"></i><span class="text-[8px] font-bold text-brand-500 uppercase">Syncing</span>`; break;
+            case 'synced': syncHeader.innerHTML = `<i data-lucide="cloud" class="w-3 h-3 text-success"></i><span class="text-[8px] font-bold text-success uppercase">Synced</span>`; break;
+            case 'pulled-new': syncHeader.innerHTML = `<i data-lucide="cloud-lightning" class="w-3 h-3 text-success animate-bounce"></i><span class="text-[8px] font-bold text-success uppercase animate-pulse">Updated</span>`; break;
+            case 'error': syncHeader.innerHTML = `<i data-lucide="cloud-off" class="w-3 h-3 text-danger"></i><span class="text-[8px] font-bold text-danger uppercase">Failed</span>`; break;
+            default: syncHeader.innerHTML = `<i data-lucide="cloud" class="w-3 h-3 text-success"></i><span class="text-[8px] font-bold text-success uppercase">Linked</span>`; break;
+          }
+        }
+      }
+      lucide.createIcons();
+    }
+
+    function toggleAutoSync(isChecked) { appState.autoSync = isChecked; saveStateToLocalStorage(); updateSyncStatusUI("local"); startBackgroundPolling(); }
+    function updateCloudUrl(val) { appState.gasUrl = val.trim(); saveStateToLocalStorage(); updateSyncStatusUI("local"); startBackgroundPolling(); }
+    function clearCloudUrl() { appState.gasUrl = ""; document.getElementById('gasUrlInput').value = ""; saveStateToLocalStorage(); updateSyncStatusUI("local"); if(backgroundPollInterval) clearInterval(backgroundPollInterval); openToastAlert("URL Cleared."); }
+    function copyAppsScriptCode() { const code = document.getElementById('appsScriptCodeText').textContent; const el = document.createElement('textarea'); el.value = code; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); openToastAlert("Copied to clipboard!"); }
+    function pushStateToCloud() { if (!appState.gasUrl) { openToastAlert("Add Script URL first!"); return; } triggerSilentCloudSync(); }
+    function pullStateFromCloud() {
+      if (!appState.gasUrl) return; updateSyncStatusUI("pulling");
+      fetchWithRetry(appState.gasUrl).then(res => res.json()).then(res => {
+        if (res && res.status === "success" && res.data) { const url = appState.gasUrl; appState = res.data; appState.gasUrl = url; saveStateToLocalStorageDirectly(); loadDataFromStorage(); applyBrandSettings(); renderApp(); updateSyncStatusUI("synced"); openToastAlert("Pulled successfully!"); } 
+        else updateSyncStatusUI("error");
+      }).catch(err => { updateSyncStatusUI("error"); showAlertDialog("Error", "Check URL.", () => {}, false); });
+    }
+
+    function updateBrandSettings() { appState.appName = document.getElementById('customAppNameInput').value.trim() || "TripExpense"; appState.appLogo = document.getElementById('customAppLogoInput').value.trim() || "✈️"; saveStateToLocalStorage(); applyBrandSettings(); }
+    function applyBrandSettings() {
+      safeSetText('headerBrandName', appState.appName); safeSetText('headerLogoContainer', appState.appLogo);
+      document.getElementById('customAppNameInput').value = appState.appName; document.getElementById('customAppLogoInput').value = appState.appLogo; document.getElementById('gasUrlInput').value = appState.gasUrl || ""; document.getElementById('autoSyncToggle').checked = appState.autoSync; document.getElementById('customAppPinInput').value = appState.securityPin || "0000";
+    }
+    function calculateBalances(trip) {
+      const balances = {}; const paidForThem = {}; const paidForMe = {}; const members = trip.members || [];
+      members.forEach(m => { balances[m.id] = 0; paidForThem[m.id] = 0; paidForMe[m.id] = 0; });
+      (trip.expenses || []).forEach(exp => {
+        const type = exp.type || 'personal'; const fid = exp.friendId; const amt = parseFloat(exp.amount) || 0;
+        if (type === 'i_paid_friend' && fid && balances[fid] !== undefined) { paidForThem[fid] += amt; if (!trip.expenses.some(e => e.type === 'settlement' && e.settledExpenseId === exp.id)) balances[fid] += amt; } 
+        else if (type === 'friend_paid_me' && fid && balances[fid] !== undefined) { paidForMe[fid] += amt; if (!trip.expenses.some(e => e.type === 'settlement' && e.settledExpenseId === exp.id)) balances[fid] -= amt; } 
+        else if (type === 'settlement' && fid && balances[fid] !== undefined && !exp.settledExpenseId) { if ((exp.settlementDirection || 'you_to_friend') === 'you_to_friend') balances[fid] += amt; else balances[fid] -= amt; }
+      });
+      return { balances, paidForThem, paidForMe };
+    }
+
+    function toggleDropdown(dropdownId) { const dropdown = document.getElementById(dropdownId); if (dropdown) { if (dropdown.classList.contains('hidden')) { dropdown.classList.remove('hidden'); dropdown.classList.add('scale-in-anim'); } else { dropdown.classList.add('hidden'); dropdown.classList.remove('scale-in-anim'); } } }
+    window.addEventListener('click', function(e) { const d = document.getElementById('coverDropdown'); if (d && !e.target.closest('#coverDropdown') && !e.target.closest('button[onclick*="coverDropdown"]')) d.classList.add('hidden'); });
+
+    function populateCategorySelectors() {
+      const filterSelect = document.getElementById('filterCategory'); const formSelect = document.getElementById('expenseModalCategory');
+      if (filterSelect) filterSelect.innerHTML = '<option value="ALL">All Cats</option>'; if (formSelect) formSelect.innerHTML = '';
+      CATEGORIES.forEach(cat => {
+        const optF = document.createElement('option'); optF.value = cat.id; optF.textContent = cat.name; if (formSelect) formSelect.appendChild(optF);
+        const optL = document.createElement('option'); optL.value = cat.id; optL.textContent = cat.name; if (filterSelect) filterSelect.appendChild(optL);
+      });
+    }
+
+    function changeCurrency(symbol) { appState.currency = symbol; saveStateToLocalStorage(); document.querySelectorAll('.active-currency').forEach(el => el.textContent = symbol); renderApp(); }
+    function toggleDarkMode() {
+      const docHtml = document.documentElement;
+      if (docHtml.classList.contains('dark')) { docHtml.classList.remove('dark'); docHtml.classList.add('light'); appState.theme = 'light'; } 
+      else { docHtml.classList.remove('light'); docHtml.classList.add('dark'); appState.theme = 'dark'; }
+      saveStateToLocalStorage(); applyThemeFromState(); updateModalThemeStatus();
+    }
+    function applyThemeFromState() {
+      const docHtml = document.documentElement; const icon = document.getElementById('themeIcon');
+      if (appState.theme === 'dark') { docHtml.classList.add('dark'); docHtml.classList.remove('light'); if (icon) icon.setAttribute('data-lucide', 'sun'); } 
+      else { docHtml.classList.remove('dark'); docHtml.classList.add('light'); if (icon) icon.setAttribute('data-lucide', 'moon'); }
+      lucide.createIcons();
+    }
+    function updateModalThemeStatus() { const themeText = document.getElementById('themeTextModal'); const themeIcon = document.getElementById('themeIconModal'); if (themeText && themeIcon) { if (appState.theme === 'dark') { themeText.textContent = 'Light Mode'; themeIcon.setAttribute('data-lucide', 'sun'); } else { themeText.textContent = 'Dark Mode'; themeIcon.setAttribute('data-lucide', 'moon'); } } }
+
+    function openSettingsModal() { document.getElementById('settingsModal').classList.remove('hidden'); updateModalThemeStatus(); updateSyncStatusUI(syncStatusState); lucide.createIcons(); }
+    function closeSettingsModal() { document.getElementById('settingsModal').classList.add('hidden'); }
+    function toggleSettingsSection(sectionId) {
+      const target = document.getElementById(sectionId); const arrow = document.getElementById('arrow-' + sectionId);
+      if (target) {
+        if (target.classList.contains('hidden')) {
+          ['sectionBrand', 'sectionAppearance', 'sectionCloudSync', 'sectionSecurity', 'sectionBackupRestore', 'sectionAbout'].forEach(id => { const el = document.getElementById(id); const ar = document.getElementById('arrow-' + id); if (el) el.classList.add('hidden'); if (ar) ar.style.transform = 'rotate(0deg)'; });
+          target.classList.remove('hidden'); if (arrow) arrow.style.transform = 'rotate(180deg)';
+        } else { target.classList.add('hidden'); if (arrow) arrow.style.transform = 'rotate(0deg)'; }
+      }
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(tab => { tab.classList.add('hidden'); tab.classList.remove('block'); });
+      document.getElementById(tabId).classList.remove('hidden'); document.getElementById(tabId).classList.add('block');
+      document.querySelectorAll('.tab-button').forEach(btn => { btn.className = "hidden"; }); 
+      if (tabId === 'tabAnalytics') setTimeout(initCharts, 120);
+    }
+    function switchTrip(tripId) { appState.activeTripId = tripId; saveStateToLocalStorage(); renderApp(); }
+    function formatCurrency(amount) { return appState.currency + "" + parseFloat(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+    let searchDebounce = null; function handleSearchInput() { if (searchDebounce) clearTimeout(searchDebounce); searchDebounce = setTimeout(() => { renderApp(); }, 200); }
+    let renderDebounce = null; function debouncedRenderApp() { if (renderDebounce) clearTimeout(renderDebounce); renderDebounce = setTimeout(() => { renderApp(); }, 16); }
+
+    function renderApp() {
+      if (!appState.trips || appState.trips.length === 0) {
+        document.getElementById('dashboardMainContent').classList.add('hidden'); document.getElementById('emptyStateOnboarding').classList.remove('hidden'); document.getElementById('emptyStateOnboarding').classList.add('flex');
+        const switcher = document.getElementById('headerTripSelector'); if (switcher) switcher.innerHTML = '<option value="">No Trip</option>'; return;
+      }
+      if (!appState.activeTripId || !appState.trips.some(t => t.id === appState.activeTripId)) appState.activeTripId = appState.trips[0].id;
+      const activeTrip = appState.trips.find(t => t.id === appState.activeTripId); if (!activeTrip) return;
+
+      document.getElementById('dashboardMainContent').classList.remove('hidden'); document.getElementById('emptyStateOnboarding').classList.add('hidden'); document.getElementById('emptyStateOnboarding').classList.remove('flex');
+      const calc = calculateBalances(activeTrip); const members = activeTrip.members || []; safeSetText('splitBadgeCount', members.length);
+      const switcher = document.getElementById('headerTripSelector');
+      if (switcher) { switcher.innerHTML = ''; appState.trips.forEach(t => { const opt = document.createElement('option'); opt.value = t.id; opt.textContent = t.name; if (t.id === appState.activeTripId) opt.selected = true; switcher.appendChild(opt); }); }
+      safeSetText('tripName', activeTrip.name); safeSetText('tripDestination', activeTrip.destination);
+      const optFormat = { month: 'short', day: 'numeric' }; safeSetText('tripDates', `${new Date(activeTrip.startDate).toLocaleDateString('en-US', optFormat)} - ${new Date(activeTrip.endDate).toLocaleDateString('en-US', optFormat)}`);
+      applyTripCoverBackground(activeTrip.coverImage || 'sunset'); safeSetText('notesPlannedBudget', formatCurrency(activeTrip.budget)); safeSetText('notesStartDate', new Date(activeTrip.startDate).toLocaleDateString('en-US', optFormat)); safeSetText('notesEndDate', new Date(activeTrip.endDate).toLocaleDateString('en-US', optFormat));
+      const journalTextarea = document.getElementById('tripJournal'); if (journalTextarea) journalTextarea.value = activeTrip.journal || "";
+
+      let total = 0; let personal = 0; let oweYou = 0; let youOwe = 0; let settled = 0; let upi = 0; let card = 0; let cash = 0; let bigAmt = 0; let bigDesc = "None"; let cheapAmt = Infinity; let cheapDesc = "None"; const freqMap = {};
+      (activeTrip.expenses || []).forEach(exp => {
+        const amt = parseFloat(exp.amount) || 0; const type = exp.type || 'personal';
+        if (type !== 'settlement') total += amt;
+        if (type === 'personal') personal += amt;
+        if (type === 'settlement') settled += amt;
+        if (type !== 'settlement') {
+          if (exp.paymentMethod === 'UPI') upi += amt; if (exp.paymentMethod === 'Card') card += amt; if (exp.paymentMethod === 'Cash') cash += amt;
+          if (amt > bigAmt) { bigAmt = amt; bigDesc = exp.description; } if (amt < cheapAmt) { cheapAmt = amt; cheapDesc = exp.description; }
+          freqMap[exp.category] = (freqMap[exp.category] || 0) + 1;
+        }
+      });
+      if (cheapAmt === Infinity) cheapAmt = 0;
+      Object.keys(calc.balances).forEach(fId => { const bal = calc.balances[fId]; if (bal > 0.01) oweYou += bal; else if (bal < -0.01) youOwe += Math.abs(bal); });
+      safeSetText('statTotalTripExpense', formatCurrency(total)); safeSetText('statPersonalExpense', formatCurrency(personal)); safeSetText('statFriendsOweYou', formatCurrency(oweYou)); safeSetText('statYouOweFriends', formatCurrency(youOwe)); safeSetText('statSettledAmount', formatCurrency(settled));
+      
+      const budgetLimit = parseFloat(activeTrip.budget) || 0; const bCont = document.getElementById('tripHeaderBudgetContainer'); const kCard = document.getElementById('kpiTotalExpenseCard');
+      if (bCont) {
+        if (budgetLimit <= 0) bCont.innerHTML = `<span class="opacity-70">No limit</span>`;
+        else {
+          const rem = budgetLimit - total; const isExc = rem < 0; const pct = Math.min((total / budgetLimit) * 100, 100); const bc = isExc ? 'bg-danger' : (pct > 80 ? 'bg-warning' : 'bg-white');
+          bCont.innerHTML = `<div class="flex justify-between items-center mb-1"><span>Budget</span><span class="font-bold">${rem >= 0 ? formatCurrency(rem) + ' left' : 'Exceeded by ' + formatCurrency(Math.abs(rem))}</span></div><div class="h-1.5 w-full bg-white/20 rounded-full overflow-hidden"><div class="h-full ${bc} rounded-full" style="width: ${pct}%"></div></div>`;
+          if (kCard) { if (isExc) kCard.classList.add('border-rose-500'); else kCard.classList.remove('border-rose-500'); }
+        }
+      }
+      safeSetText('extremeBiggestDesc', bigDesc); safeSetText('extremeBiggestVal', formatCurrency(bigAmt)); safeSetText('extremeCheapestDesc', cheapDesc); safeSetText('extremeCheapestVal', formatCurrency(cheapAmt)); safeSetText('paymentUPIVal', formatCurrency(upi)); safeSetText('paymentCardVal', formatCurrency(card)); safeSetText('paymentCashVal', formatCurrency(cash));
+      
+      renderExpensesList(filterAndSortExpenses(activeTrip.expenses), members); renderDailyTimelineWidget(activeTrip.expenses); renderSplitsSystem(activeTrip, calc);
+      updateSyncStatusUI(syncStatusState); lucide.createIcons();
+    }
+
+    function applyTripCoverBackground(theme) { const c = document.getElementById('tripCoverBg'); if (!c) return; const m = { 'sunset': "from-orange-400 to-rose-500", 'forest': "from-emerald-400 to-teal-600", 'neon': "from-purple-500 to-pink-500", 'ocean': "from-blue-400 to-cyan-500", 'classic': "from-neutralSlate-400 to-neutralSlate-600", 'indigo': "from-brand-500 to-indigo-700" }; c.className = `absolute inset-0 z-0 transition-colors duration-500 opacity-90 rounded-[24px] bg-gradient-to-br ${m[theme]||m['indigo']}`; }
+    function updateCover(theme) { const t = appState.trips.find(x => x.id === appState.activeTripId); if (t) { t.coverImage = theme; saveStateToLocalStorage(); applyTripCoverBackground(theme); } document.getElementById('coverDropdown').classList.add('hidden'); }
+    function filterAndSortExpenses(expenses) {
+      const q = document.getElementById('searchQuery').value.toLowerCase().trim(); const cF = document.getElementById('filterCategory').value; const sV = document.getElementById('sortBy').value;
+      let f = expenses.filter(exp => { if (exp.type === 'settlement') return false; return (!q || exp.description.toLowerCase().includes(q) || (exp.notes && exp.notes.toLowerCase().includes(q)) || exp.category.toLowerCase().includes(q)) && (cF === 'ALL' || exp.category === cF); });
+      f.sort((a, b) => { const dA = new Date(a.date); const dB = new Date(b.date); if (sV === 'date-desc') return dB - dA; if (sV === 'date-asc') return dA - dB; if (sV === 'amount-desc') return parseFloat(b.amount) - parseFloat(a.amount); if (sV === 'amount-asc') return parseFloat(a.amount) - parseFloat(b.amount); return 0; }); return f;
+    }
+
+    function renderExpensesList(expenses, members) {
+      const c = document.getElementById('expensesContainer'); c.innerHTML = '';
+      if (expenses.length === 0) { c.innerHTML = `<div class="py-10 text-center text-neutralSlate-400 text-xs">No records.</div>`; return; }
+      const a = appState.trips.find(t => t.id === appState.activeTripId); const aE = a ? a.expenses : [];
+      expenses.forEach(exp => {
+        const cat = CATEGORIES.find(x => x.id === exp.category) || { name: exp.category, bgClass: "bg-neutralSlate-100 text-neutralSlate-600" };
+        const dStr = new Date(exp.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }); const type = exp.type || 'personal'; const comp = members.find(m => m.id === exp.friendId) || { name: 'Friend' };
+        let sT = ''; let qS = ''; const iS = !!aE.find(e => e.type === 'settlement' && e.settledExpenseId === exp.id);
+        if (type === 'personal') sT = `<span class="text-[8px] text-neutralSlate-400 font-bold">Personal</span>`;
+        else if (type === 'i_paid_friend') { sT = `<span class="text-[8px] text-brand-500 font-bold">Paid for ${comp.name}</span>`; if(!iS) qS = `<button onclick="triggerQuickSettle('${exp.friendId}', ${exp.amount}, 'friend_to_you', '${exp.description.replace(/'/g, "\\'")}', '${exp.id}')" class="h-6 px-2 bg-brand-500/10 text-brand-500 rounded text-[9px] font-bold">Settle</button>`; } 
+        else if (type === 'friend_paid_me') { sT = `<span class="text-[8px] text-accent font-bold">${comp.name} paid</span>`; if(!iS) qS = `<button onclick="triggerQuickSettle('${exp.friendId}', ${exp.amount}, 'you_to_friend', '${exp.description.replace(/'/g, "\\'")}', '${exp.id}')" class="h-6 px-2 bg-accent/10 text-accent rounded text-[9px] font-bold">Settle</button>`; }
+        if (iS) sT += `<span class="text-success font-bold text-[8px] ml-1">✓ Settled</span>`;
+        let iC = 'receipt'; if (exp.category === 'Food' || exp.category === 'Snacks') iC = 'coffee'; if (exp.category === 'Hotel') iC = 'bed'; if (['Train','Bus','Auto','Taxi','Flight'].includes(exp.category)) iC = 'navigation';
+
+        const node = document.createElement('div'); node.className = "bg-white dark:bg-neutralSlate-900 p-3 rounded-[16px] shadow-sm flex flex-col gap-2 transition active:scale-95 border border-neutralSlate-100 dark:border-neutralSlate-800";
+        node.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2 overflow-hidden">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${cat.bgClass}"><i data-lucide="${iC}" class="w-4 h-4"></i></div>
+              <div class="overflow-hidden"><h4 class="font-black text-neutralSlate-900 dark:text-white truncate text-xs">${exp.description}</h4><div class="flex items-center gap-1.5 mt-0.5"><span class="text-[9px] text-neutralSlate-400 font-bold">${dStr}</span><span class="w-1 h-1 rounded-full bg-neutralSlate-300"></span>${sT}</div></div>
+            </div>
+            <div class="text-right shrink-0"><div class="font-black text-sm">${formatCurrency(exp.amount)}</div>${exp.billImage ? `<button onclick="previewBillImage('${exp.id}')" class="text-[8px] text-brand-500 font-bold flex items-center justify-end gap-0.5 mt-0.5"><i data-lucide="paperclip" class="w-2.5 h-2.5"></i> Receipt</button>` : ''}</div>
+          </div>
+          <div class="flex items-center justify-between pt-1">
+             <div class="flex gap-1"><span class="px-1.5 py-0.5 rounded text-[7px] font-bold uppercase ${cat.bgClass}">${cat.name}</span><span class="px-1.5 py-0.5 rounded text-[7px] font-bold uppercase bg-neutralSlate-100 dark:bg-neutralSlate-800 text-neutralSlate-500">${exp.paymentMethod}</span></div>
+             <div class="flex items-center gap-1">${qS}<button onclick="openExpenseEditModal('${exp.id}')" class="w-6 h-6 flex items-center justify-center text-neutralSlate-400"><i data-lucide="edit-2" class="w-3 h-3"></i></button><button onclick="triggerDeleteExpense('${exp.id}')" class="w-6 h-6 flex items-center justify-center text-neutralSlate-400"><i data-lucide="trash-2" class="w-3 h-3"></i></button></div>
+          </div>
+        `; c.appendChild(node);
+      });
+    }
+
+    function renderDailyTimelineWidget(expenses) { }
+
+    function renderSplitsSystem(trip, calc) {
+      const cL = document.getElementById('friendsListContainer'); cL.innerHTML = ''; const mbs = trip.members || [];
+      if (mbs.length === 0) cL.innerHTML = `<div class="col-span-2 py-4 text-center text-neutralSlate-404 text-xs">No friends added.</div>`;
+      else { mbs.forEach(m => {
+        const b = calc.balances[m.id] || 0; let bL = '';
+        if (b > 0.01) bL = `<span class="text-[10px] font-black text-success">Owes you ${formatCurrency(b)}</span>`;
+        else if (b < -0.01) bL = `<span class="text-[10px] font-black text-danger">You owe ${formatCurrency(Math.abs(b))}</span>`;
+        else bL = `<span class="text-[10px] text-neutralSlate-500 font-bold">Settled up</span>`;
+        const card = document.createElement('div'); card.className = "bg-white dark:bg-neutralSlate-900 p-3 rounded-[16px] shadow-sm relative border border-neutralSlate-100 dark:border-neutralSlate-800";
+        card.innerHTML = `<button onclick="deleteFriend('${m.id}')" class="absolute top-2 right-2 text-neutralSlate-300 hover:text-rose-500"><i data-lucide="trash-2" class="w-3 h-3"></i></button><div class="w-8 h-8 rounded-xl mb-2 flex items-center justify-center font-black text-xs shadow-inner ${m.color}">${m.name.charAt(0)}</div><h4 class="font-black text-xs truncate">${m.name}</h4><div class="mt-0.5">${bL}</div>`; cL.appendChild(card);
+      }); }
+
+      const tB = document.getElementById('splitBalanceTableBody'); tB.innerHTML = '';
+      mbs.forEach(m => {
+        const yp = calc.paidForThem[m.id] || 0; const tp = calc.paidForMe[m.id] || 0; const nb = calc.balances[m.id] || 0;
+        let sC = "text-neutralSlate-555 font-bold"; let sT = "Settled";
+        if (nb > 0.01) { sC = "text-success font-black"; sT = `Owes`; } else if (nb < -0.01) { sC = "text-danger font-black"; sT = `Owe`; }
+        const tr = document.createElement('tr'); tr.className = "hover:bg-neutralSlate-50/40 dark:hover:bg-neutralSlate-850/25";
+        tr.innerHTML = `<td class="py-2 px-4 font-bold">${m.name}</td><td class="py-2 px-4 text-right">${formatCurrency(yp)}</td><td class="py-2 px-4 text-right">${formatCurrency(tp)}</td><td class="py-2 px-4 text-right ${sC}">${sT}: ${formatCurrency(Math.abs(nb))}</td>`; tB.appendChild(tr);
+      });
+
+      const sC = document.getElementById('settleSuggestionsContainer'); sC.innerHTML = ''; let aC = 0;
+      mbs.forEach(m => {
+        const b = calc.balances[m.id] || 0; if (Math.abs(b) > 0.01) { aC++; const item = document.createElement('div'); item.className = "p-2.5 bg-neutralSlate-50 dark:bg-neutralSlate-955 rounded-xl flex justify-between items-center gap-2 border border-neutralSlate-100 dark:border-neutralSlate-800";
+        item.innerHTML = `<div><p class="text-[9px] text-neutralSlate-500">${b > 0 ? `<strong>${m.name}</strong> pays You` : `You pay <strong>${m.name}</strong>`}</p><p class="text-xs font-black text-brand-500">${formatCurrency(Math.abs(b))}</p></div><button onclick="triggerQuickSettle('${m.id}', ${Math.abs(b)}, '${b > 0 ? 'friend_to_you' : 'you_to_friend'}')" class="h-7 px-3 bg-brand-500 text-white text-[9px] font-bold rounded-lg shadow">Settle</button>`; sC.appendChild(item); }
+      });
+      if (aC === 0) sC.innerHTML = `<div class="text-center text-[10px] text-neutralSlate-400 font-bold">All clear!</div>`;
+    }
+
+    function shareSplitSummaryWhatsApp() {
+      const a = appState.trips.find(t => t.id === appState.activeTripId); if (!a) return; const c = calculateBalances(a);
+      let t = `*${appState.appName}*: ${a.name} 🗺\n\n*Ledger:*\n`;
+      (a.members || []).forEach(m => { const b = c.balances[m.id] || 0; t += `• _${m.name}_: ${b > 0.01 ? `Owes you: ${formatCurrency(b)} 🟢` : (b < -0.01 ? `You owe them: ${formatCurrency(Math.abs(b))} 🔴` : 'Settled ✅')}\n`; });
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(t)}`, '_blank');
+    }
+
+    function openFriendModal() { document.getElementById('friendForm').reset(); selectFriendColor('bg-indigo-500 text-white'); document.getElementById('friendModal').classList.remove('hidden'); }
+    function closeFriendModal() { document.getElementById('friendModal').classList.add('hidden'); }
+    function selectFriendColor(c) { document.querySelectorAll('.friend-color-btn').forEach(b => b.classList.replace('border-indigo-400', 'border-transparent')); const m = Array.from(document.querySelectorAll('.friend-color-btn')).find(b => b.getAttribute('onclick').includes(c)); if (m) { m.classList.add('border-indigo-400'); m.classList.remove('border-transparent'); } document.getElementById('friendModalColor').value = c; }
+    function saveFriend(e) { e.preventDefault(); const a = appState.trips.find(t => t.id === appState.activeTripId); if (!a) return; if (!a.members) a.members = []; a.members.push({ id: generateUniqueId('friend'), name: document.getElementById('friendModalName').value.trim(), phone: document.getElementById('friendModalPhone').value.trim() || 'No phone', color: document.getElementById('friendModalColor').value }); saveStateToLocalStorage(); closeFriendModal(); renderApp(); }
+    function deleteFriend(id) { const a = appState.trips.find(t => t.id === appState.activeTripId); if (!a) return; showAlertDialog("Remove?", "Logs remain.", () => { a.members = a.members.filter(m => m.id !== id); saveStateToLocalStorage(); renderApp(); }, true); }
+    function triggerQuickSettle(fId, amt, dir, desc = "", sId = "") { openExpenseModal(); document.getElementById('expenseModalType').value = 'settlement'; handleTypeChange('settlement'); document.getElementById('expenseModalFriend').value = fId; document.getElementById('expenseModalSettleDirection').value = dir; document.getElementById('expenseModalAmount').value = amt.toFixed(2); document.getElementById('expenseModalDescription').value = desc ? `Settle: ${desc}` : "Settle Balance"; document.getElementById('expenseModalSettledId').value = sId; }
+    function openTripModal() { document.getElementById('tripModalTitle').textContent = 'New Trip'; document.getElementById('tripModalId').value = ''; document.getElementById('tripForm').reset(); const today = new Date().toISOString().split('T')[0]; document.getElementById('tripModalStartDate').value = today; document.getElementById('tripModalEndDate').value = today; document.getElementById('tripModal').classList.remove('hidden'); }
+    function openTripEditModal() { const a = appState.trips.find(t => t.id === appState.activeTripId); if (!a) return; document.getElementById('tripModalTitle').textContent = 'Edit Trip'; document.getElementById('tripModalId').value = a.id; document.getElementById('tripModalName').value = a.name; document.getElementById('tripModalDestination').value = a.destination; document.getElementById('tripModalStartDate').value = a.startDate; document.getElementById('tripModalEndDate').value = a.endDate; document.getElementById('tripModalBudget').value = a.budget; document.getElementById('tripModal').classList.remove('hidden'); }
+    function closeTripModal() { document.getElementById('tripModal').classList.add('hidden'); }
+    function saveTrip(e) {
+      e.preventDefault(); const id = document.getElementById('tripModalId').value; const n = document.getElementById('tripModalName').value.trim(); const d = document.getElementById('tripModalDestination').value.trim(); const sd = document.getElementById('tripModalStartDate').value; const ed = document.getElementById('tripModalEndDate').value; const b = parseFloat(document.getElementById('tripModalBudget').value) || 0;
+      if (new Date(ed) < new Date(sd)) { openToastAlert("Dates invalid"); return; }
+      if (id) { const i = appState.trips.findIndex(t => t.id === id); if (i !== -1) { appState.trips[i].name = n; appState.trips[i].destination = d; appState.trips[i].startDate = sd; appState.trips[i].endDate = ed; appState.trips[i].budget = b; } } 
+      else { const nId = generateUniqueId('trip'); appState.trips.push({ id: nId, name: n, destination: d, startDate: sd, endDate: ed, budget: b, coverImage: 'indigo', journal: '', members: [], expenses: [] }); appState.activeTripId = nId; }
+      saveStateToLocalStorage(); closeTripModal(); renderApp();
+    }
+    function showAlertDialog(t, m, c, s=true) { const a = document.getElementById('alertDialog'); document.getElementById('alertTitle').textContent = t; document.getElementById('alertMessage').innerHTML = m.replace(/\n/g, '<br>'); const cB = document.getElementById('alertConfirmBtn'); const aB = document.getElementById('alertCancelBtn'); aB.textContent = "Cancel"; if (s) { cB.classList.remove('hidden'); cB.onclick = function() { c(); closeAlertDialog(); } } else { cB.classList.add('hidden'); aB.textContent = "OK"; } a.classList.remove('hidden'); lucide.createIcons(); }
+    function closeAlertDialog() { document.getElementById('alertDialog').classList.add('hidden'); }
+    function triggerDeleteTrip() { const a = appState.trips.find(t => t.id === appState.activeTripId); if (!a) return; showAlertDialog("Delete?", "Completely remove trip?", () => { appState.trips = appState.trips.filter(t => t.id !== appState.activeTripId); appState.activeTripId = appState.trips.length > 0 ? appState.trips[0].id : ""; saveStateToLocalStorage(); renderApp(); }, true); }
+    
+    // Segment UI Fix
+    function handleTypeChange(val) {
+      const hS = document.getElementById('expenseModalType'); if (hS && hS.value !== val) hS.value = val;
+      const bP = document.getElementById('btnTypePersonal'); const bS = document.getElementById('btnTypeSplit'); const sC = document.getElementById('splitOptionsContainer');
+      const cI = document.getElementById('cardTypeIPaid'); const cF = document.getElementById('cardTypeFriendPaid'); const cS = document.getElementById('cardTypeSettlement');
+      const aB = "bg-white dark:bg-neutralSlate-800 shadow-sm text-neutralSlate-900 dark:text-white"; const iB = "text-neutralSlate-500 bg-transparent";
+      const aC = "border-brand-500 bg-brand-50 dark:bg-brand-500/10"; const iC = "border-transparent bg-neutralSlate-50 dark:bg-neutralSlate-955";
+      if(bP) {
+        bP.className = `flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${val === 'personal' ? aB : iB}`; bS.className = `flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${val !== 'personal' ? aB : iB}`;
+        if (val === 'personal') { sC.classList.replace('flex', 'hidden'); sC.classList.remove('opacity-100'); } else { sC.classList.replace('hidden', 'flex'); setTimeout(()=>sC.classList.add('opacity-100'), 10); }
+        cI.className = `p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 ${val === 'i_paid_friend' ? aC : iC}`; cF.className = `p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 ${val === 'friend_paid_me' ? aC : iC}`; cS.className = `p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 ${val === 'settlement' ? aC : iC}`;
+      }
+      const fR = document.getElementById('friendInvolvedRow'); const sR = document.getElementById('settlementDirectionRow');
+      if (val === 'personal') { fR.classList.add('hidden'); sR.classList.add('hidden'); } else if (val === 'settlement') { fR.classList.remove('hidden'); sR.classList.remove('hidden'); } else { fR.classList.remove('hidden'); sR.classList.add('hidden'); }
+    }
+
+    function openExpenseModal() { closeExpenseModal(); document.getElementById('expenseModalTitle').textContent = 'Log Spend'; document.getElementById('expenseModalId').value = ''; document.getElementById('expenseModalSettledId').value = ''; const a = appState.trips.find(t => t.id === appState.activeTripId); if (a) { document.getElementById('expenseModalDate').value = new Date().toISOString().split('T')[0]; populateExpensesFriendSelectors(a); } document.getElementById('expenseModalType').value = "personal"; handleTypeChange('personal'); document.getElementById('expenseModal').classList.remove('hidden'); }
+    function openExpenseEditModal(id) { const a = appState.trips.find(t => t.id === appState.activeTripId); if (!a) return; const e = a.expenses.find(x => x.id === id); if (!e) return; document.getElementById('expenseModalTitle').textContent = 'Edit Spend'; document.getElementById('expenseModalId').value = e.id; document.getElementById('expenseModalSettledId').value = e.settledExpenseId || ''; document.getElementById('expenseModalDate').value = e.date; document.getElementById('expenseModalCategory').value = e.category; document.getElementById('expenseModalDescription').value = e.description; document.getElementById('expenseModalAmount').value = e.amount; document.getElementById('expenseModalPaymentMethod').value = e.paymentMethod; document.getElementById('expenseModalNotes').value = e.notes || ''; document.getElementById('expenseModalBillBase64').value = e.billImage || ''; if (e.billImage) document.getElementById('billAttachmentStatus').textContent = "Loaded"; else document.getElementById('billAttachmentStatus').textContent = "None"; populateExpensesFriendSelectors(a); const t = e.type || 'personal'; document.getElementById('expenseModalType').value = t; handleTypeChange(t); if (t !== 'personal') document.getElementById('expenseModalFriend').value = e.friendId || ''; if (t === 'settlement') document.getElementById('expenseModalSettleDirection').value = e.settlementDirection || 'you_to_friend'; document.getElementById('expenseModal').classList.remove('hidden'); }
+    function populateExpensesFriendSelectors(trip) { const s = document.getElementById('expenseModalFriend'); if (!s) return; s.innerHTML = ''; const m = trip.members || []; if (m.length === 0) { const o = document.createElement('option'); o.value = ''; o.textContent = 'Add friend first'; s.appendChild(o); } else { m.forEach(x => { const o = document.createElement('option'); o.value = x.id; o.textContent = x.name; s.appendChild(o); }); } }
+    function closeExpenseModal() { document.getElementById('expenseModal').classList.add('hidden'); document.getElementById('expenseForm').reset(); document.getElementById('expenseModalId').value = ''; document.getElementById('expenseModalSettledId').value = ''; document.getElementById('billAttachmentStatus').textContent = "None"; document.getElementById('expenseModalBillBase64').value = ""; const sb = document.getElementById('expenseSubmitBtn'); if (sb) sb.disabled = false; }
+    function processBillImage(e) { const f = e.target.files[0]; if (!f) return; if (f.size > 2 * 1024 * 1024) { openToastAlert("Max 2MB!"); return; } const r = new FileReader(); r.onload = function(evt) { document.getElementById('expenseModalBillBase64').value = evt.target.result; document.getElementById('billAttachmentStatus').textContent = "Loaded"; }; r.readAsDataURL(f); }
+    function openToastAlert(msg) { showAlertDialog("Notice", msg, () => {}, false); }
+    function saveExpense(e) {
+      e.preventDefault(); const sb = document.getElementById('expenseSubmitBtn'); if (sb) sb.disabled = true; const a = appState.trips.find(t => t.id === appState.activeTripId); if (!a) { if (sb) sb.disabled = false; return; }
+      const id = document.getElementById('expenseModalId').value; const sId = document.getElementById('expenseModalSettledId').value; const d = document.getElementById('expenseModalDate').value; const c = document.getElementById('expenseModalCategory').value; const desc = document.getElementById('expenseModalDescription').value.trim(); const amt = parseFloat(document.getElementById('expenseModalAmount').value) || 0; const pM = document.getElementById('expenseModalPaymentMethod').value; const n = document.getElementById('expenseModalNotes').value.trim(); const b64 = document.getElementById('expenseModalBillBase64').value; const t = document.getElementById('expenseModalType').value; const fId = document.getElementById('expenseModalFriend').value; const sD = document.getElementById('expenseModalSettleDirection').value;
+      if (amt <= 0) { openToastAlert("Amount > 0"); if (sb) sb.disabled = false; return; } if (t !== 'personal' && !fId) { openToastAlert("Select a friend"); if (sb) sb.disabled = false; return; }
+      const o = { id: id || generateUniqueId('exp'), date: d, category: c, description: desc, amount: amt, paymentMethod: pM, notes: n, billImage: b64, type: t, friendId: t === 'personal' ? '' : fId, settlementDirection: t === 'settlement' ? sD : '', settledExpenseId: t === 'settlement' ? sId : '' };
+      if (id) { const i = a.expenses.findIndex(x => x.id === id); if (i !== -1) a.expenses[i] = o; } else a.expenses.push(o); saveStateToLocalStorage(); closeExpenseModal(); renderApp();
+    }
+    function triggerDeleteExpense(id) { const a = appState.trips.find(t => t.id === appState.activeTripId); if (!a) return; showAlertDialog("Delete?", "Remove this log?", () => { a.expenses = a.expenses.filter(e => e.id !== id && e.settledExpenseId !== id); saveStateToLocalStorage(); renderApp(); }, true); }
+    function saveTripJournal() { const a = appState.trips.find(t => t.id === appState.activeTripId); if (a) { a.journal = document.getElementById('tripJournal').value; saveStateToLocalStorage(); } }
+    function previewBillImage(id) { const a = appState.trips.find(t => t.id === appState.activeTripId); if (!a) return; const e = a.expenses.find(x => x.id === id); if (!e || !e.billImage) return; const p = window.open(); if (p) p.document.write(`<html><head><title>Receipt</title><style>body{background:#0F172A;color:white;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;}img{max-width:90%;border-radius:12px;}</style></head><body><h2>${e.description}</h2><img src="${e.billImage}"></body></html>`); else openToastAlert("Allow popups"); }
+    
+    function initCharts() {
+      const a = appState.trips.find(t => t.id === appState.activeTripId); if (!a) return;
+      const isDark = document.documentElement.classList.contains('dark'); const tc = isDark ? '#f8fafc' : '#0f172a'; const bc = isDark ? '#1e293b' : '#e2e8f0';
+      const cT = {}; a.expenses.forEach(e => { if (e.type !== 'settlement') cT[e.category] = (cT[e.category] || 0) + parseFloat(e.amount); });
+      const pL = Object.keys(cT).map(cId => CATEGORIES.find(c => c.id === cId)?.name || cId); const pV = Object.values(cT); const pP = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#14b8a6'];
+      if (pieChartInstance) { pieChartInstance.destroy(); pieChartInstance = null; } const pCtx = document.getElementById('categoryPieChart').getContext('2d');
+      if (pV.length === 0) pieChartInstance = new Chart(pCtx, { type: 'doughnut', data: { labels: ['None'], datasets: [{ data: [1], backgroundColor: [bc], borderWidth:0 }] }, options: { cutout: '80%', plugins: { legend: { display: false } } } });
+      else pieChartInstance = new Chart(pCtx, { type: 'doughnut', data: { labels: pL, datasets: [{ data: pV, backgroundColor: pP, borderWidth: 0 }] }, options: { cutout: '75%', plugins: { legend: { position: 'right', labels: { color: tc, font: { family: 'Inter', size: 9 } } } } } });
+
+      const dS = {}; a.expenses.forEach(e => { if (e.type !== 'settlement') dS[e.date] = (dS[e.date] || 0) + parseFloat(e.amount); });
+      const sD = Object.keys(dS).sort((x,y) => new Date(x) - new Date(y)); const bL = sD.map(d => new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })); const bV = sD.map(d => dS[d]);
+      if (barChartInstance) { barChartInstance.destroy(); barChartInstance = null; } const bCtx = document.getElementById('dailySpendsChart').getContext('2d');
+      if (bV.length === 0) barChartInstance = new Chart(bCtx, { type: 'line', data: { labels: ['None'], datasets: [{ data: [0], borderColor: bc }] }, options: { plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } });
+      else barChartInstance = new Chart(bCtx, { type: 'line', data: { labels: bL, datasets: [{ data: bV, borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', borderWidth: 2, fill: true, tension:0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: tc, font: { size: 9 } } }, y: { grid: { color: bc }, ticks: { color: tc, font: { size: 9 } } } } } });
+    }
+
+    function exportCSV() { const a = appState.trips.find(t => t.id === appState.activeTripId); if (!a || !a.expenses || a.expenses.length===0) return; let c = "data:text/csv;charset=utf-8,Date,Category,Description,Amount,Payment Method,Notes,Type\n"; a.expenses.forEach(e => c += [e.date, e.category, `"${e.description.replace(/"/g, '""')}"`, e.amount, e.paymentMethod, `"${(e.notes || '').replace(/"/g, '""')}"`, e.type || 'personal'].join(",") + "\n"); const l = document.createElement("a"); l.setAttribute("href", encodeURI(c)); l.setAttribute("download", `expenses.csv`); document.body.appendChild(l); l.click(); l.remove(); }
+    function exportPDF() { const a = appState.trips.find(t => t.id === appState.activeTripId); if (!a || !a.expenses || a.expenses.length===0) return; openToastAlert("Generating PDF..."); let html = `<div style="font-family: Arial; padding: 20px;"><h2>${a.name} Report</h2><table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;"><thead><tr style="background:#f3f4f6"><th style="padding:8px; border:1px solid #ddd;">Date</th><th style="padding:8px; border:1px solid #ddd;">Desc</th><th style="padding:8px; border:1px solid #ddd;">Amount</th></tr></thead><tbody>`; a.expenses.forEach(e => html += `<tr><td style="padding:8px; border:1px solid #ddd;">${e.date}</td><td style="padding:8px; border:1px solid #ddd;">${e.description}</td><td style="padding:8px; border:1px solid #ddd; font-weight:bold;">${appState.currency}${e.amount}</td></tr>`); html += `</tbody></table></div>`; html2pdf().set({ margin:0.5, filename:`expenses.pdf`, image:{type:'jpeg',quality:0.98}, html2canvas:{scale:2}, jsPDF:{unit:'in',format:'letter',orientation:'portrait'} }).from(document.createElement('div').insertAdjacentHTML('beforeend', html).parentNode).save(); }
+    function triggerBackup() { const l = document.createElement('a'); l.setAttribute("href", "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState))); l.setAttribute("download", `backup.json`); document.body.appendChild(l); l.click(); l.remove(); }
+    function triggerRestore(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = function(evt) { try { const d = JSON.parse(evt.target.result); if (d && d.trips) { appState = d; saveStateToLocalStorageDirectly(); applyBrandSettings(); applyThemeFromState(); renderApp(); } } catch(err){} }; r.readAsText(f); }
+    function resetAllData() { showAlertDialog("Reset", "Clear everything?", () => { localStorage.removeItem('tripexpencetracker_master_v17_premium'); seedInitialSampleData(); applyBrandSettings(); applyThemeFromState(); renderApp(); }, true); }
+    
+    function registerServiceWorker() { if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').then(reg => reg.addEventListener('updatefound', () => { const nw = reg.installing; nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) showPwaUpdateBanner(reg); }); }))); }
+    function showPwaUpdateBanner(reg) { const c = document.getElementById('pwaNotificationContainer'); if (!c) return; const b = document.createElement('div'); b.className = "bg-neutralSlate-900 text-white p-4 rounded-2xl shadow-2xl flex flex-col gap-2"; b.innerHTML = `<h4 class="font-bold text-sm">Update Available</h4><button id="pwaUpdateAcceptBtn" class="bg-brand-500 px-4 py-2 rounded-xl text-xs font-bold mt-2">Install Update</button>`; c.appendChild(b); document.getElementById('pwaUpdateAcceptBtn').addEventListener('click', () => { if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' }); window.location.reload(); }); }
+    function handlePwaShortcuts() {}
+  </script>
+</body>
+</html>

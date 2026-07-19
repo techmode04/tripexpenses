@@ -102,10 +102,7 @@
         <div class="bg-neutralSlate-900 border border-neutralSlate-800 rounded-[32px] p-8 shadow-2xl flex flex-col items-center text-center">
           
     <div class="w-16 h-16 mb-6 bg-brand-500 rounded-2xl flex items-center justify-center shadow-glow">
-  <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M22 2 11 13"/>
-    <path d="m22 2-7 20-4-9-9-4Z"/>
-  </svg>
+    <img src="logo.png" alt="TripExpenses Logo" class="w-8 h-8 object-contain">
 </div>
           <h3 class="text-2xl font-black text-white">TripExpenses</h3>
          <p class="text-sm text-neutralSlate-404 mt-2 mb-1">
@@ -117,7 +114,7 @@
 </p>
           
           <div class="w-full space-y-4">
-            <input type="password" id="loginPinInput" maxlength="4" placeholder="••••" class="w-full bg-neutralSlate-950 text-white px-6 h-14 rounded-2xl border border-neutralSlate-800 focus:outline-none focus:border-brand-500 text-center font-black tracking-[1em] text-xl">
+            <input type="password" id="loginPinInput" maxlength="4" placeholder="••••" class="w-full bg-neutralSlate-950 text-white px-6 h-14 rounded-2xl border border-neutralSlate-800 focus:outline-none focus:border-brand-500 text-center font-black tracking-[0em] text-xl">
             <div id="pinErrorMessage" class="hidden text-danger font-bold text-xs">Incorrect PIN.</div>
             <button onclick="verifySecurityPin()" class="w-full h-14 bg-brand-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-floating active:scale-95 transition-all"><span>Unlock</span><i data-lucide="arrow-right" class="w-5 h-5"></i></button>
           </div>

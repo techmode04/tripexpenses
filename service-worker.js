@@ -1,5 +1,7 @@
-// Version control - updating this triggers old cache removal instantly
-const CACHE_NAME = 'trip-expense-v1';
+// Version control - bumped to v2 to trigger old cache removal instantly for the new UI
+const CACHE_NAME = 'trip-expense-v2-premium';
+
+// Added html2pdf and specific font weights matching the new index.html
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -7,7 +9,8 @@ const ASSETS_TO_CACHE = [
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/lucide@latest',
   'https://cdn.jsdelivr.net/npm/chart.js',
-  'https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800;900&display=swap'
+  'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap'
 ];
 
 // Perform install & cache setup
@@ -15,7 +18,7 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('[Service Worker] Pre-caching static app shell assets');
+        console.log('[Service Worker] Pre-caching premium app shell assets');
         return cache.addAll(ASSETS_TO_CACHE);
       })
       .then(() => self.skipWaiting())
